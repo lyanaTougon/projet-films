@@ -3,10 +3,9 @@
 ============================================================ */
 
 .connexion-page {
-  padding-top: 50px;
-  padding-left: 30px;
-  padding-right: 30px;
-  padding-bottom: 40px;
+  min-height: 100vh;
+  padding: 50px 30px 40px;
+  box-sizing: border-box;
 }
 
 
@@ -18,15 +17,12 @@
   width: 100%;
   max-width: 450px;
   margin: 40px auto;
-
   padding: 2.5rem;
-
   box-sizing: border-box;
 
-  background: rgba(20, 20, 20, 0.85);
+  background: rgba(20, 20, 20, 0.501);
 
   border: 1px solid rgba(255, 255, 255, 0.15);
-
   border-radius: 20px;
 
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
@@ -43,7 +39,6 @@
   color: white;
 
   font-size: 2rem;
-
   font-weight: 700;
 
   text-align: center;
@@ -71,7 +66,6 @@
 
 .seconnecter-container form {
   display: flex;
-
   flex-direction: column;
 
   gap: 1.2rem;
@@ -84,7 +78,6 @@
 
 .form-group {
   display: flex;
-
   flex-direction: column;
 
   gap: 0.5rem;
@@ -99,7 +92,6 @@
   color: white;
 
   font-size: 0.9rem;
-
   font-weight: 600;
 }
 
@@ -118,7 +110,6 @@
   background: rgba(255, 255, 255, 0.08);
 
   border: 1px solid rgba(255, 255, 255, 0.2);
-
   border-radius: 10px;
 
   color: white;
@@ -131,27 +122,30 @@
 }
 
 
-/* Placeholder */
+/* ============================================================
+   PLACEHOLDER
+============================================================ */
 
 .form-group input::placeholder {
   color: #888;
 }
 
 
-/* Input sélectionné */
+/* ============================================================
+   INPUT SÉLECTIONNÉ
+============================================================ */
 
 .form-group input:focus {
   border-color: rgba(255, 255, 255, 0.6);
 
   background: rgba(255, 255, 255, 0.12);
 
-  box-shadow:
-    0 0 0 3px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
 }
 
 
 /* ============================================================
-   BOUTON CONNEXION
+   BOUTON CONNEXION / CRÉATION
 ============================================================ */
 
 .login-button {
@@ -164,13 +158,11 @@
   background: white;
 
   border: none;
-
   border-radius: 10px;
 
   color: #111;
 
   font-size: 0.95rem;
-
   font-weight: 700;
 
   cursor: pointer;
@@ -179,7 +171,9 @@
 }
 
 
-/* Survol */
+/* ============================================================
+   SURVOL BOUTON
+============================================================ */
 
 .login-button:hover {
   background: #e5e5e5;
@@ -188,7 +182,9 @@
 }
 
 
-/* Bouton désactivé */
+/* ============================================================
+   BOUTON DÉSACTIVÉ
+============================================================ */
 
 .login-button:disabled {
   opacity: 0.6;
@@ -196,6 +192,72 @@
   cursor: not-allowed;
 
   transform: none;
+}
+
+
+/* ============================================================
+   SECTION CRÉATION DE COMPTE
+============================================================ */
+
+.create-account-section {
+  margin-top: 25px;
+
+  padding-top: 20px;
+
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+
+  text-align: center;
+}
+
+
+/* ============================================================
+   TEXTE CRÉATION DE COMPTE
+============================================================ */
+
+.create-account-section p {
+  margin: 0 0 12px;
+
+  color: #aaa;
+
+  font-size: 0.9rem;
+}
+
+
+/* ============================================================
+   BOUTON CRÉER UN COMPTE
+============================================================ */
+
+.create-account-button {
+  width: 100%;
+
+  padding: 0.85rem 1rem;
+
+  background: transparent;
+
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+
+  color: white;
+
+  font-size: 0.95rem;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+}
+
+
+/* ============================================================
+   SURVOL CRÉER UN COMPTE
+============================================================ */
+
+.create-account-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+
+  border-color: rgba(255, 255, 255, 0.6);
+
+  transform: translateY(-1px);
 }
 
 
@@ -217,12 +279,20 @@
 
 
 /* ============================================================
+   MESSAGE SUCCÈS
+============================================================ */
+
+.login-message.success {
+  color: #86efac;
+}
+
+
+/* ============================================================
    BOÎTE DE COMPTE
 ============================================================ */
 
 .account-box {
   width: 100%;
-
   max-width: 900px;
 
   margin: 0 auto 25px;
@@ -234,24 +304,33 @@
   background: rgba(21, 21, 21, 0.85);
 
   border: 1px solid rgba(255, 255, 255, 0.15);
-
   border-radius: 15px;
 
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 
   color: white;
 }
 
 
+/* ============================================================
+   TITRE COMPTE
+============================================================ */
+
 .account-box h2 {
   margin-top: 0;
-
   margin-bottom: 20px;
 
   color: white;
 }
 
+
+/* ============================================================
+   INFORMATIONS COMPTE
+============================================================ */
+
+.account-info {
+  margin-bottom: 25px;
+}
 
 .account-info h3 {
   margin: 20px 0;
@@ -259,6 +338,12 @@
   color: white;
 
   font-size: 20px;
+}
+
+.account-info p {
+  margin: 8px 0;
+
+  color: #bdbdbd;
 }
 
 
@@ -270,7 +355,6 @@
   padding: 10px 20px;
 
   border: none;
-
   border-radius: 8px;
 
   background: white;
@@ -281,9 +365,13 @@
 
   font-weight: bold;
 
-  transition: 0.2s ease;
+  transition: all 0.2s ease;
 }
 
+
+/* ============================================================
+   SURVOL DÉCONNEXION
+============================================================ */
 
 .logout-button:hover {
   background: #e5e5e5;
@@ -293,154 +381,11 @@
 
 
 /* ============================================================
-   ADMIN - LISTE DES UTILISATEURS
-============================================================ */
-
-.admin-users-box {
-  width: 100%;
-
-  max-width: 900px;
-
-  margin: 0 auto 25px;
-
-  padding: 25px;
-
-  box-sizing: border-box;
-
-  background: rgba(21, 21, 21, 0.85);
-
-  border: 1px solid rgba(255, 255, 255, 0.15);
-
-  border-radius: 15px;
-
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.4);
-
-  color: white;
-}
-
-
-.admin-users-box h2 {
-  margin-top: 0;
-
-  margin-bottom: 20px;
-
-  color: white;
-}
-
-
-.admin-users-box p {
-  color: #bdbdbd;
-}
-
-
-/* ============================================================
-   LISTE
-============================================================ */
-
-.users-list {
-  display: flex;
-
-  flex-direction: column;
-
-  gap: 12px;
-}
-
-
-/* ============================================================
-   UTILISATEUR
-============================================================ */
-
-.user-row {
-  display: flex;
-
-  align-items: center;
-
-  justify-content: space-between;
-
-  gap: 20px;
-
-  padding: 15px;
-
-  background: rgba(255, 255, 255, 0.08);
-
-  border: 1px solid rgba(255, 255, 255, 0.1);
-
-  border-radius: 10px;
-
-  transition: background 0.2s ease;
-}
-
-
-.user-row:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-
-/* ============================================================
-   INFORMATIONS UTILISATEUR
-============================================================ */
-
-.user-info {
-  display: flex;
-
-  flex-direction: column;
-
-  gap: 5px;
-}
-
-
-.user-info strong {
-  color: white;
-
-  font-size: 18px;
-}
-
-
-.user-info span {
-  color: #aaa;
-
-  font-size: 13px;
-}
-
-
-/* ============================================================
-   BOUTON SUPPRESSION
-============================================================ */
-
-.delete-user-button {
-  padding: 8px 12px;
-
-  border: none;
-
-  border-radius: 7px;
-
-  background: #b91c1c;
-
-  color: white;
-
-  cursor: pointer;
-
-  font-weight: bold;
-
-  transition: 0.2s ease;
-}
-
-
-.delete-user-button:hover {
-  background: #dc2626;
-
-  transform: translateY(-1px);
-}
-
-
-/* ============================================================
-   MESSAGE DE CONNEXION
+   MESSAGE CONNEXION
 ============================================================ */
 
 .connexion-message {
   width: 100%;
-
   max-width: 900px;
 
   margin: 15px auto;
@@ -458,37 +403,23 @@
 ============================================================ */
 
 @media (max-width: 600px) {
-
   .connexion-page {
     padding: 40px 15px 30px;
   }
-
 
   .seconnecter-container {
     padding: 2rem 1.5rem;
   }
 
-
   .seconnecter-container h1 {
     font-size: 1.7rem;
   }
 
-
-  .account-box,
-  .admin-users-box {
+  .account-box {
     padding: 20px;
   }
 
-
-  .user-row {
-    flex-direction: column;
-
-    align-items: flex-start;
-  }
-
-
-  .delete-user-button {
+  .logout-button {
     width: 100%;
   }
-
 }

@@ -1,52 +1,70 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { findMovieById } from "./Data/movie.jsx";
 import "./details.css";
 
+const API_URL = "http://localhost:5000";
 const BASE_URL = import.meta.env.BASE_URL;
+
+// ============================================================
+// IMAGE
+// ============================================================
 
 function getImagePath(path) {
   if (!path) {
     return "";
   }
 
-  if (path.startsWith("http://") || path.startsWith("https://")) {
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  ) {
+    return path;
+  }
+
+  if (path.startsWith("/projet-films/")) {
     return path;
   }
 
   return `${BASE_URL}${path.replace(/^\/+/, "")}`;
 }
 
-function Details() {
+// ============================================================
+// DETAILS
+// ============================================================
+
+function Details({ movie: movieFromProps }) {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const movie = findMovieById(id);
+  const [movie, setMovie] = useState(movieFromProps || null);
+  const [loadingMovie, setLoadingMovie] = useState(!movieFromProps);
 
   // ============================================================
-  // ÉTATS
+  // CARROUSEL
+  // ============================================================
+
+  const [currentImage, setCurrentImage] = useState(0);
+
+  // ============================================================
+  // FAVORIS
   // ============================================================
 
   const [isFavorite, setIsFavorite] = useState(false);
-  const [userRating, setUserRating] = useState(null);
-  const [hoverRating, setHoverRating] = useState(0);
-
   const [loadingFavorite, setLoadingFavorite] = useState(false);
-  const [loadingRating, setLoadingRating] = useState(false);
 
-  // Message FAVORIS
   const [favoriteMessage, setFavoriteMessage] = useState("");
   const [favoriteMessageType, setFavoriteMessageType] = useState("");
 
-  // Message NOTE
+  // ============================================================
+  // NOTES
+  // ============================================================
+
+  const [userRating, setUserRating] = useState(null);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [loadingRating, setLoadingRating] = useState(false);
+
   const [ratingMessage, setRatingMessage] = useState("");
   const [ratingMessageType, setRatingMessageType] = useState("");
-
-  // ============================================================
-  // BACKEND
-  // ============================================================
-
-  const API_URL = "http://localhost:5000";
 
   // ============================================================
   // TOKEN
@@ -55,6 +73,72 @@ function Details() {
   const getToken = () => {
     return localStorage.getItem("token");
   };
+
+  // ============================================================
+  // RÉCUPÉRER LE FILM / LA SÉRIE
+  // ============================================================
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMovie = async () => {
+      try {
+        setLoadingMovie(true);
+
+        const response = await fetch(
+          `${API_URL}/api/movies/${id}`
+        );
+
+        if (!response.ok) {
+          if (!cancelled) {
+            setMovie(null);
+          }
+
+          return;
+        }
+
+        const data = await response.json();
+
+        if (!cancelled) {
+          setMovie(data);
+          setCurrentImage(0);
+        }
+      } catch (error) {
+        console.error(
+          "Erreur récupération du film :",
+          error
+        );
+
+        if (!cancelled) {
+          setMovie(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingMovie(false);
+        }
+      }
+    };
+
+    loadMovie();
+
+    const handleMoviesChanged = () => {
+      loadMovie();
+    };
+
+    window.addEventListener(
+      "moviesChanged",
+      handleMoviesChanged
+    );
+
+    return () => {
+      cancelled = true;
+
+      window.removeEventListener(
+        "moviesChanged",
+        handleMoviesChanged
+      );
+    };
+  }, [id]);
 
   // ============================================================
   // RÉCUPÉRER LES FAVORIS
@@ -69,12 +153,15 @@ function Details() {
       }
 
       try {
-        const response = await fetch(`${API_URL}/api/favoris`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(
+          `${API_URL}/api/favoris`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (!response.ok) {
           return;
@@ -82,14 +169,22 @@ function Details() {
 
         const data = await response.json();
 
-        const favoriteExists = data.favorites.some(
+        const favorites = Array.isArray(data.favorites)
+          ? data.favorites
+          : [];
+
+        const favoriteExists = favorites.some(
           (favorite) =>
-            String(favorite.movie_id) === String(movie.id)
+            String(favorite.movie_id) ===
+            String(movie.id)
         );
 
         setIsFavorite(favoriteExists);
       } catch (error) {
-        console.error("Erreur récupération favoris :", error);
+        console.error(
+          "Erreur récupération favoris :",
+          error
+        );
       }
     };
 
@@ -109,12 +204,15 @@ function Details() {
       }
 
       try {
-        const response = await fetch(`${API_URL}/api/ratings`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(
+          `${API_URL}/api/ratings`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (!response.ok) {
           return;
@@ -122,21 +220,90 @@ function Details() {
 
         const data = await response.json();
 
-        const ratingExists = data.ratings.find(
+        const ratings = Array.isArray(data.ratings)
+          ? data.ratings
+          : [];
+
+        const ratingExists = ratings.find(
           (rating) =>
-            String(rating.movie_id) === String(movie.id)
+            String(rating.movie_id) ===
+            String(movie.id)
         );
 
         if (ratingExists) {
           setUserRating(Number(ratingExists.rating));
+        } else {
+          setUserRating(null);
         }
       } catch (error) {
-        console.error("Erreur récupération note :", error);
+        console.error(
+          "Erreur récupération note :",
+          error
+        );
       }
     };
 
     getUserRating();
   }, [movie]);
+
+  // ============================================================
+  // ARRIÈRE-PLAN
+  // ============================================================
+
+  useEffect(() => {
+    if (!movie) {
+      return;
+    }
+
+    document.body.style.background =
+      movie.background || "#c5c4c4";
+
+    return () => {
+      document.body.style.background = "";
+    };
+  }, [movie]);
+
+  // ============================================================
+  // IMAGES DU CARROUSEL
+  // ============================================================
+
+  const detailImages = [
+    movie?.image1,
+    movie?.image2,
+    movie?.image3,
+  ].filter(Boolean);
+
+  // ============================================================
+  // IMAGE SUIVANTE
+  // ============================================================
+
+  const nextImage = () => {
+    if (detailImages.length === 0) {
+      return;
+    }
+
+    setCurrentImage((previous) =>
+      previous === detailImages.length - 1
+        ? 0
+        : previous + 1
+    );
+  };
+
+  // ============================================================
+  // IMAGE PRÉCÉDENTE
+  // ============================================================
+
+  const previousImage = () => {
+    if (detailImages.length === 0) {
+      return;
+    }
+
+    setCurrentImage((previous) =>
+      previous === 0
+        ? detailImages.length - 1
+        : previous - 1
+    );
+  };
 
   // ============================================================
   // ALLER À LA CONNEXION
@@ -152,10 +319,6 @@ function Details() {
 
   const toggleFavorite = async () => {
     const token = getToken();
-
-    // ----------------------------------------------------------
-    // PAS CONNECTÉ
-    // ----------------------------------------------------------
 
     if (!token) {
       setFavoriteMessage(
@@ -175,15 +338,10 @@ function Details() {
     }
 
     setLoadingFavorite(true);
-
     setFavoriteMessage("");
     setFavoriteMessageType("");
 
     try {
-      // --------------------------------------------------------
-      // RETIRER DES FAVORIS
-      // --------------------------------------------------------
-
       if (isFavorite) {
         const response = await fetch(
           `${API_URL}/api/favoris/${movie.id}`,
@@ -199,7 +357,8 @@ function Details() {
 
         if (!response.ok) {
           setFavoriteMessage(
-            data.message || "Erreur lors de la suppression."
+            data.message ||
+              "Erreur lors de la suppression."
           );
 
           setFavoriteMessageType("error");
@@ -214,13 +373,7 @@ function Details() {
         );
 
         setFavoriteMessageType("success");
-      }
-
-      // --------------------------------------------------------
-      // AJOUTER AUX FAVORIS
-      // --------------------------------------------------------
-
-      else {
+      } else {
         const response = await fetch(
           `${API_URL}/api/favoris`,
           {
@@ -239,7 +392,8 @@ function Details() {
 
         if (!response.ok) {
           setFavoriteMessage(
-            data.message || "Erreur lors de l'ajout."
+            data.message ||
+              "Erreur lors de l'ajout."
           );
 
           setFavoriteMessageType("error");
@@ -275,10 +429,6 @@ function Details() {
   const handleRating = async (rating) => {
     const token = getToken();
 
-    // ----------------------------------------------------------
-    // PAS CONNECTÉ
-    // ----------------------------------------------------------
-
     if (!token) {
       setRatingMessage(
         "Veuillez vous connecter pour noter ce film."
@@ -297,7 +447,6 @@ function Details() {
     }
 
     setLoadingRating(true);
-
     setRatingMessage("");
     setRatingMessageType("");
 
@@ -396,7 +545,10 @@ function Details() {
 
       setRatingMessageType("success");
     } catch (error) {
-      console.error("Erreur suppression note :", error);
+      console.error(
+        "Erreur suppression note :",
+        error
+      );
 
       setRatingMessage(
         "Impossible de contacter le serveur."
@@ -429,21 +581,16 @@ function Details() {
   };
 
   // ============================================================
-  // ARRIÈRE-PLAN
+  // CHARGEMENT
   // ============================================================
 
-  useEffect(() => {
-    if (!movie) {
-      return;
-    }
-
-    document.body.style.background =
-      movie.background || "#c5c4c4";
-
-    return () => {
-      document.body.style.background = "";
-    };
-  }, [movie]);
+  if (loadingMovie) {
+    return (
+      <div className="film-detail">
+        <p>Chargement...</p>
+      </div>
+    );
+  }
 
   // ============================================================
   // FILM INTROUVABLE
@@ -452,7 +599,7 @@ function Details() {
   if (!movie) {
     return (
       <div className="film-detail">
-        <h2>Film introuvable</h2>
+        <h2>Film ou série introuvable</h2>
 
         <button
           type="button"
@@ -472,9 +619,7 @@ function Details() {
   return (
     <div className="film-detail">
 
-      {/* ======================================================
-          RETOUR
-      ====================================================== */}
+      {/* RETOUR */}
 
       <button
         type="button"
@@ -484,15 +629,11 @@ function Details() {
         ← Retour
       </button>
 
-      {/* ======================================================
-          INFORMATIONS DU FILM
-      ====================================================== */}
+      {/* INFORMATIONS */}
 
       <div className="film-detail-header">
 
-        {/* ====================================================
-            AFFICHE
-        ==================================================== */}
+        {/* AFFICHE */}
 
         <img
           className="film-detail-poster"
@@ -502,31 +643,23 @@ function Details() {
 
         <div className="film-detail-info">
 
-          {/* ==================================================
-              TITRE
-          ================================================== */}
+          {/* TITRE */}
 
           <h1>{movie.title}</h1>
 
-          {/* ==================================================
-              GENRE
-          ================================================== */}
+          {/* GENRE */}
 
           <span className="film-detail-genre">
             {movie.genre}
           </span>
 
-          {/* ==================================================
-              SYNOPSIS
-          ================================================== */}
+          {/* SYNOPSIS */}
 
           <p className="film-detail-synopsis">
             {movie.synopsis}
           </p>
 
-          {/* ==================================================
-              FAVORIS
-          ================================================== */}
+          {/* FAVORIS */}
 
           <button
             type="button"
@@ -545,9 +678,7 @@ function Details() {
               : "♡ Ajouter aux favoris"}
           </button>
 
-          {/* ==================================================
-              MESSAGE FAVORIS
-          ================================================== */}
+          {/* MESSAGE FAVORIS */}
 
           {favoriteMessage && (
             <div
@@ -567,22 +698,15 @@ function Details() {
             </div>
           )}
 
-          {/* ==================================================
-              NOTES
-          ================================================== */}
+          {/* NOTES */}
 
           <div className="rating-section">
 
             <h3>Ma note</h3>
 
-            {/* =================================================
-                ÉTOILES
-            ================================================= */}
-
             <div className="stars">
 
               {[1, 2, 3, 4, 5].map((star) => {
-
                 const currentRating =
                   hoverRating !== 0
                     ? hoverRating
@@ -632,9 +756,7 @@ function Details() {
                 );
               })}
 
-              {/* =================================================
-                  SUPPRIMER LA NOTE
-              ================================================= */}
+              {/* SUPPRIMER LA NOTE */}
 
               {userRating !== null && (
                 <button
@@ -651,9 +773,7 @@ function Details() {
 
             </div>
 
-            {/* ==================================================
-                NOTE ACTUELLE
-            ================================================== */}
+            {/* NOTE ACTUELLE */}
 
             {userRating !== null && (
               <p className="rating-text">
@@ -661,9 +781,7 @@ function Details() {
               </p>
             )}
 
-            {/* ==================================================
-                MESSAGE NOTE
-            ================================================== */}
+            {/* MESSAGE NOTE */}
 
             {ratingMessage && (
               <div
@@ -688,6 +806,93 @@ function Details() {
       </div>
 
       {/* ======================================================
+          CARROUSEL DES 3 IMAGES
+      ====================================================== */}
+
+      {detailImages.length > 0 && (
+        <section className="film-images-section">
+
+          <h2>
+            Découvrez l'univers de {movie.title}
+          </h2>
+
+          <div className="film-images-carousel">
+
+            {/* BOUTON PRÉCÉDENT */}
+
+            {detailImages.length > 1 && (
+              <button
+                type="button"
+                className="carousel-arrow carousel-arrow-left"
+                onClick={previousImage}
+                aria-label="Image précédente"
+              >
+                ‹
+              </button>
+            )}
+
+            {/* IMAGE */}
+
+            <div className="film-carousel-image-wrapper">
+
+              <img
+                key={currentImage}
+                className="film-carousel-image"
+                src={getImagePath(
+                  detailImages[currentImage]
+                )}
+                alt={`${movie.title} - image ${
+                  currentImage + 1
+                }`}
+              />
+
+            </div>
+
+            {/* BOUTON SUIVANT */}
+
+            {detailImages.length > 1 && (
+              <button
+                type="button"
+                className="carousel-arrow carousel-arrow-right"
+                onClick={nextImage}
+                aria-label="Image suivante"
+              >
+                ›
+              </button>
+            )}
+
+          </div>
+
+          {/* INDICATEURS */}
+
+          {detailImages.length > 1 && (
+            <div className="carousel-dots">
+
+              {detailImages.map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  className={`carousel-dot ${
+                    currentImage === index
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    setCurrentImage(index)
+                  }
+                  aria-label={`Afficher l'image ${
+                    index + 1
+                  }`}
+                />
+              ))}
+
+            </div>
+          )}
+
+        </section>
+      )}
+
+      {/* ======================================================
           BANDE-ANNONCE
       ====================================================== */}
 
@@ -707,6 +912,7 @@ function Details() {
             />
 
           </div>
+
         </div>
       )}
 

@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MOVIES } from "../Data/movie.jsx";
 import "./films.css";
+
+// ============================================================
+// CONFIGURATION
+// ============================================================
+
+const API_URL = "http://localhost:5000";
+const BASE_URL = import.meta.env.BASE_URL;
 
 // ============================================================
 // GESTION DES IMAGES
 // ============================================================
-
-const BASE_URL = import.meta.env.BASE_URL;
 
 function getImagePath(path) {
   if (!path) {
@@ -21,6 +25,10 @@ function getImagePath(path) {
     return path;
   }
 
+  if (path.startsWith("/projet-films/")) {
+    return path;
+  }
+
   return `${BASE_URL}${path.replace(/^\/+/, "")}`;
 }
 
@@ -30,9 +38,7 @@ function getImagePath(path) {
 
 function Stars({ rating }) {
   const roundedRating = Math.round(rating * 2) / 2;
-
   const fullStars = Math.floor(roundedRating);
-
   const halfStar = roundedRating % 1 !== 0;
 
   const emptyStars =
@@ -41,9 +47,7 @@ function Stars({ rating }) {
   return (
     <span className="rating-stars">
       {"★".repeat(fullStars)}
-
       {halfStar && "½"}
-
       {"☆".repeat(emptyStars)}
     </span>
   );
@@ -56,35 +60,186 @@ function Stars({ rating }) {
 function Films() {
   const navigate = useNavigate();
 
-  const allMovies = MOVIES;
-
   // ----------------------------------------------------------
   // ÉTATS
   // ----------------------------------------------------------
 
+  const [movies, setMovies] = useState([]);
   const [search, setSearch] = useState("");
-
   const [genre, setGenre] = useState("Tous");
-
   const [ratings, setRatings] = useState({});
-
-  const [loadingRatings, setLoadingRatings] =
-    useState(true);
+  const [loadingMovies, setLoadingMovies] = useState(true);
+  const [loadingRatings, setLoadingRatings] = useState(true);
 
   // ----------------------------------------------------------
-  // RÉCUPÉRER LES MOYENNES DE TOUS LES FILMS
+  // RÉCUPÉRER LES FILMS DEPUIS POSTGRESQL
+  // ----------------------------------------------------------
+
+  async function loadMovies() {
+    try {
+      setLoadingMovies(true);
+
+      const response = await fetch(
+        `${API_URL}/api/movies`
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Impossible de récupérer les films."
+        );
+      }
+
+      const data = await response.json();
+
+      // Le backend peut renvoyer directement un tableau
+      // ou un objet contenant movies/results.
+      let allMovies = [];
+
+      if (Array.isArray(data)) {
+        allMovies = data;
+      } else if (Array.isArray(data.movies)) {
+        allMovies = data.movies;
+      } else if (Array.isArray(data.results)) {
+        allMovies = data.results;
+      }
+
+      // ------------------------------------------------------
+      // ON GARDE UNIQUEMENT LES FILMS
+      // ------------------------------------------------------
+
+      const filmList = allMovies.filter((movie) => {
+        const type = String(movie.type || "")
+          .trim()
+          .toLowerCase();
+
+        return type === "film";
+      });
+
+      setMovies(filmList);
+    } catch (error) {
+      console.error(
+        "Erreur récupération des films :",
+        error
+      );
+
+      setMovies([]);
+    } finally {
+      setLoadingMovies(false);
+    }
+  }
+
+  // ----------------------------------------------------------
+  // CHARGEMENT INITIAL
   // ----------------------------------------------------------
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchMovies() {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/movies`
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "Impossible de récupérer les films."
+          );
+        }
+
+        const data = await response.json();
+
+        let allMovies = [];
+
+        if (Array.isArray(data)) {
+          allMovies = data;
+        } else if (Array.isArray(data.movies)) {
+          allMovies = data.movies;
+        } else if (Array.isArray(data.results)) {
+          allMovies = data.results;
+        }
+
+        const filmList = allMovies.filter((movie) => {
+          const type = String(movie.type || "")
+            .trim()
+            .toLowerCase();
+
+          return type === "film";
+        });
+
+        if (!cancelled) {
+          setMovies(filmList);
+        }
+      } catch (error) {
+        console.error(
+          "Erreur récupération des films :",
+          error
+        );
+
+        if (!cancelled) {
+          setMovies([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingMovies(false);
+        }
+      }
+    }
+
+    fetchMovies();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ----------------------------------------------------------
+  // RECHARGER APRÈS AJOUT / MODIFICATION / SUPPRESSION
+  // ----------------------------------------------------------
+
+  useEffect(() => {
+    function handleMoviesChanged() {
+      loadMovies();
+    }
+
+    window.addEventListener(
+      "moviesChanged",
+      handleMoviesChanged
+    );
+
+    return () => {
+      window.removeEventListener(
+        "moviesChanged",
+        handleMoviesChanged
+      );
+    };
+  }, []);
+
+  // ----------------------------------------------------------
+  // RÉCUPÉRER LES MOYENNES DES NOTES
+  // ----------------------------------------------------------
+
+  useEffect(() => {
+    let cancelled = false;
+
     async function loadRatings() {
+      if (movies.length === 0) {
+        if (!cancelled) {
+          setRatings({});
+          setLoadingRatings(false);
+        }
+
+        return;
+      }
+
       try {
         setLoadingRatings(true);
 
         const results = await Promise.all(
-          allMovies.map(async (movie) => {
+          movies.map(async (movie) => {
             try {
               const response = await fetch(
-                `http://localhost:5000/api/ratings/movie/${movie.id}`
+                `${API_URL}/api/ratings/movie/${movie.id}`
               );
 
               if (!response.ok) {
@@ -128,19 +283,27 @@ function Films() {
           };
         });
 
-        setRatings(ratingsObject);
+        if (!cancelled) {
+          setRatings(ratingsObject);
+        }
       } catch (error) {
         console.error(
           "Erreur récupération des notes :",
           error
         );
       } finally {
-        setLoadingRatings(false);
+        if (!cancelled) {
+          setLoadingRatings(false);
+        }
       }
     }
 
     loadRatings();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [movies]);
 
   // ----------------------------------------------------------
   // GENRES
@@ -149,7 +312,9 @@ function Films() {
   const genres = [
     "Tous",
     ...new Set(
-      allMovies.map((movie) => movie.genre)
+      movies
+        .map((movie) => movie.genre)
+        .filter(Boolean)
     ),
   ];
 
@@ -157,8 +322,10 @@ function Films() {
   // FILTRAGE
   // ----------------------------------------------------------
 
-  const filteredMovies = allMovies.filter((movie) => {
-    const matchesSearch = movie.title
+  const filteredMovies = movies.filter((movie) => {
+    const title = String(movie.title || "");
+
+    const matchesSearch = title
       .toLowerCase()
       .includes(search.toLowerCase());
 
@@ -173,7 +340,7 @@ function Films() {
   // TOP 5 DES FILMS
   // ----------------------------------------------------------
 
-  const topMovies = [...allMovies]
+  const topMovies = [...movies]
     .filter((movie) => {
       const rating = ratings[movie.id];
 
@@ -229,7 +396,6 @@ function Films() {
         </div>
 
         <div className="films-genre">
-
           <label htmlFor="genre">
             Genre :
           </label>
@@ -250,172 +416,49 @@ function Films() {
               </option>
             ))}
           </select>
-
         </div>
+
       </div>
 
       {/* ======================================================
-          NOMBRE DE RÉSULTATS
+          CHARGEMENT
       ====================================================== */}
 
-      <div className="films-count">
-        {filteredMovies.length} film
-        {filteredMovies.length > 1 ? "s" : ""}
-      </div>
-
-      {/* ======================================================
-          CARTES DES FILMS
-      ====================================================== */}
-
-      {filteredMovies.length > 0 ? (
-
-        <div className="films-grid">
-
-          {filteredMovies.map((movie) => {
-
-            const rating = ratings[movie.id];
-
-            return (
-
-              <div
-                className="film-card"
-                key={movie.id}
-                onClick={() =>
-                  navigate(`/film/${movie.id}`)
-                }
-              >
-
-                <img
-                  src={getImagePath(movie.poster)}
-                  alt={movie.title}
-                  draggable="false"
-                  onError={(event) => {
-                    console.error(
-                      "Image introuvable :",
-                      event.currentTarget.src
-                    );
-                  }}
-                />
-
-                <div className="film-card-info">
-
-                  <h2>
-                    {movie.title}
-                  </h2>
-
-                  <span>
-                    {movie.genre}
-                  </span>
-
-                  {/* ==================================================
-                      NOTE MOYENNE
-                  ================================================== */}
-
-                  {rating && rating.count > 0 ? (
-
-                    <div className="film-rating">
-
-                      <div className="film-rating-stars">
-
-                        <Stars
-                          rating={rating.average}
-                        />
-
-                      </div>
-
-                      <strong>
-                        {rating.average.toFixed(1)} / 5
-                      </strong>
-
-                      <small>
-                        ({rating.count})
-                      </small>
-
-                    </div>
-
-                  ) : (
-
-                    <div className="film-rating no-rating">
-                      ☆ Aucune note
-                    </div>
-
-                  )}
-
-                  {/* ==================================================
-                      BOUTON VOIR
-                  ================================================== */}
-
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-
-                      navigate(
-                        `/film/${movie.id}`
-                      );
-                    }}
-                  >
-                    Voir
-                  </button>
-
-                </div>
-
-              </div>
-
-            );
-          })}
-
-        </div>
-
-      ) : (
-
+      {loadingMovies ? (
         <div className="no-results">
-
           <h2>
-            Aucun film trouvé 😕
+            Chargement des films... 🎬
           </h2>
 
           <p>
-            Aucun film ne correspond à votre recherche.
+            Récupération des films depuis WatchNext.
           </p>
-
         </div>
+      ) : (
+        <>
+          {/* ==================================================
+              NOMBRE DE RÉSULTATS
+          ================================================== */}
 
-      )}
+          <div className="films-count">
+            {filteredMovies.length} film
+            {filteredMovies.length > 1 ? "s" : ""}
+          </div>
 
-      {/* ======================================================
-          TOP 5 DES FILMS
-          AFFICHÉ EN BAS DE LA PAGE
-      ====================================================== */}
+          {/* ==================================================
+              CARTES DES FILMS
+          ================================================== */}
 
-      {!loadingRatings &&
-        topMovies.length > 0 && (
+          {filteredMovies.length > 0 ? (
+            <div className="films-grid">
 
-          <section className="top-rated-section">
-
-            <div className="top-rated-header">
-
-              <h2>
-                🏆 Top 5 des films les mieux notés
-              </h2>
-
-              <p>
-                Classement basé sur les notes de tous les utilisateurs.
-              </p>
-
-            </div>
-
-            <div className="top-rated-grid">
-
-              {topMovies.map((movie, index) => {
-
+              {filteredMovies.map((movie) => {
                 const rating =
                   ratings[movie.id];
 
                 return (
-
                   <div
-                    className="top-rated-card"
+                    className="film-card"
                     key={movie.id}
                     onClick={() =>
                       navigate(
@@ -424,26 +467,9 @@ function Films() {
                     }
                   >
 
-                    {/* ==================================================
-                        CLASSEMENT
-                    ================================================== */}
-
-                    <div className="top-position">
-
-                      {index === 0 && "🥇"}
-
-                      {index === 1 && "🥈"}
-
-                      {index === 2 && "🥉"}
-
-                      {index > 2 &&
-                        `${index + 1}️⃣`}
-
-                    </div>
-
-                    {/* ==================================================
-                        AFFICHE
-                    ================================================== */}
+                    {/* ==============================
+                        IMAGE
+                    ============================== */}
 
                     <img
                       src={getImagePath(
@@ -451,52 +477,215 @@ function Films() {
                       )}
                       alt={movie.title}
                       draggable="false"
+                      onError={(event) => {
+                        console.error(
+                          "Image introuvable :",
+                          event.currentTarget.src
+                        );
+                      }}
                     />
 
-                    {/* ==================================================
+                    {/* ==============================
                         INFORMATIONS
-                    ================================================== */}
+                    ============================== */}
 
-                    <div className="top-rated-info">
+                    <div className="film-card-info">
 
-                      <h3>
+                      <h2>
                         {movie.title}
-                      </h3>
+                      </h2>
 
-                      <div className="average-rating">
-
-                        <Stars
-                          rating={rating.average}
-                        />
-
-                        <strong>
-                          {rating.average.toFixed(1)} / 5
-                        </strong>
-
-                      </div>
-
-                      <span className="rating-count">
-
-                        {rating.count}{" "}
-
-                        {rating.count > 1
-                          ? "votes"
-                          : "vote"}
-
+                      <span>
+                        {movie.genre || "Genre non renseigné"}
                       </span>
 
+                      {/* ============================
+                          NOTE MOYENNE
+                      ============================ */}
+
+                      {rating &&
+                      rating.count > 0 ? (
+                        <div className="film-rating">
+
+                          <div className="film-rating-stars">
+                            <Stars
+                              rating={
+                                rating.average
+                              }
+                            />
+                          </div>
+
+                          <strong>
+                            {rating.average.toFixed(
+                              1
+                            )}{" "}
+                            / 5
+                          </strong>
+
+                          <small>
+                            ({rating.count})
+                          </small>
+
+                        </div>
+                      ) : (
+                        <div className="film-rating no-rating">
+                          ☆ Aucune note
+                        </div>
+                      )}
+
+                      {/* ============================
+                          BOUTON VOIR
+                      ============================ */}
+
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+
+                          navigate(
+                            `/film/${movie.id}`
+                          );
+                        }}
+                      >
+                        Voir
+                      </button>
+
                     </div>
-
                   </div>
-
                 );
               })}
 
             </div>
+          ) : (
+            /* =================================================
+               AUCUN RÉSULTAT
+            ================================================= */
 
-          </section>
+            <div className="no-results">
+              <h2>
+                Aucun film trouvé 😕
+              </h2>
 
-        )}
+              <p>
+                Aucun film ne correspond à votre recherche.
+              </p>
+            </div>
+          )}
+
+          {/* ==================================================
+              TOP 5 DES FILMS
+          ================================================== */}
+
+          {!loadingRatings &&
+            topMovies.length > 0 && (
+              <section className="top-rated-section">
+
+                <div className="top-rated-header">
+
+                  <h2>
+                    🏆 Top 5 des films les mieux notés
+                  </h2>
+
+                  <p>
+                    Classement basé sur les notes de tous les utilisateurs.
+                  </p>
+
+                </div>
+
+                <div className="top-rated-grid">
+
+                  {topMovies.map(
+                    (movie, index) => {
+                      const rating =
+                        ratings[movie.id];
+
+                      return (
+                        <div
+                          className="top-rated-card"
+                          key={movie.id}
+                          onClick={() =>
+                            navigate(
+                              `/film/${movie.id}`
+                            )
+                          }
+                        >
+
+                          {/* ==========================
+                              CLASSEMENT
+                          ========================== */}
+
+                          <div className="top-position">
+                            {index === 0 &&
+                              "🥇"}
+
+                            {index === 1 &&
+                              "🥈"}
+
+                            {index === 2 &&
+                              "🥉"}
+
+                            {index > 2 &&
+                              `${index + 1}️⃣`}
+                          </div>
+
+                          {/* ==========================
+                              AFFICHE
+                          ========================== */}
+
+                          <img
+                            src={getImagePath(
+                              movie.poster
+                            )}
+                            alt={movie.title}
+                            draggable="false"
+                          />
+
+                          {/* ==========================
+                              INFORMATIONS
+                          ========================== */}
+
+                          <div className="top-rated-info">
+
+                            <h3>
+                              {movie.title}
+                            </h3>
+
+                            <div className="average-rating">
+
+                              <Stars
+                                rating={
+                                  rating.average
+                                }
+                              />
+
+                              <strong>
+                                {rating.average.toFixed(
+                                  1
+                                )}{" "}
+                                / 5
+                              </strong>
+
+                            </div>
+
+                            <span className="rating-count">
+                              {rating.count}{" "}
+                              {rating.count > 1
+                                ? "votes"
+                                : "vote"}
+                            </span>
+
+                          </div>
+
+                        </div>
+                      );
+                    }
+                  )}
+
+                </div>
+              </section>
+            )}
+        </>
+      )}
 
     </div>
   );

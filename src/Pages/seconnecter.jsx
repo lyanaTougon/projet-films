@@ -1,100 +1,88 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Navigate } from "react-router-dom";
 import "./seconnecter.css";
 
+const API_URL = "http://localhost:5000";
+
+// ============================================================
+// RÉCUPÉRER L'UTILISATEUR SAUVEGARDÉ
+// ============================================================
+
+function getSavedUser() {
+  const savedUser = localStorage.getItem("user");
+
+  if (savedUser === null) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(savedUser);
+  } catch (error) {
+    console.error("Erreur utilisateur :", error);
+
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+
+    return null;
+  }
+}
+
+// ============================================================
+// PAGE CONNEXION
+// ============================================================
+
 function SeConnecter() {
+  // ==========================================================
+  // ÉTATS CONNEXION
+  // ==========================================================
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // ==========================================================
+  // ÉTATS CRÉATION DE COMPTE
+  // ==========================================================
+
+  const [username, setUsername] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  // ==========================================================
+  // ÉTATS GÉNÉRAUX
+  // ==========================================================
+
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [user, setUser] = useState(null);
-  const [users, setUsers] = useState([]);
+  const [user, setUser] = useState(getSavedUser);
 
-  // ============================================================
-  // RÉCUPÉRER L'UTILISATEUR CONNECTÉ
-  // ============================================================
+  const [mode, setMode] = useState("login");
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-
-    if (savedUser) {
-      try {
-        const utilisateur = JSON.parse(savedUser);
-        setUser(utilisateur);
-      } catch (error) {
-        console.error("Erreur utilisateur :", error);
-        localStorage.removeItem("user");
-        localStorage.removeItem("token");
-      }
-    }
-  }, []);
-
-  // ============================================================
-  // RÉCUPÉRER LES UTILISATEURS SI ADMIN
-  // ============================================================
-
-  useEffect(() => {
-    if (user?.role === "admin") {
-      loadUsers();
-    }
-  }, [user]);
-
-  async function loadUsers() {
-    try {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        return;
-      }
-
-      const response = await fetch(
-        "http://localhost:5000/api/admin/users",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setUsers(data.users);
-      } else {
-        setMessage(
-          data.message ||
-            "Impossible de récupérer les utilisateurs."
-        );
-      }
-    } catch (error) {
-      console.error("Erreur utilisateurs :", error);
-
-      setMessage(
-        "Impossible de contacter le serveur."
-      );
-    }
-  }
-
-  // ============================================================
+  // ==========================================================
   // CONNEXION
-  // ============================================================
+  // ==========================================================
 
-  async function handleSubmit(event) {
+  async function handleLogin(event) {
     event.preventDefault();
+
+    console.log("BOUTON SE CONNECTER CLIQUÉ");
 
     setMessage("");
     setLoading(true);
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/login",
+        `${API_URL}/api/auth/login`,
         {
           method: "POST",
+
           headers: {
             "Content-Type": "application/json",
           },
+
           body: JSON.stringify({
-            email: email,
+            email: email.trim(),
             password: password,
           }),
         }
@@ -102,41 +90,115 @@ function SeConnecter() {
 
       const data = await response.json();
 
+      console.log("Réponse du serveur :", data);
+
+      // ========================================================
+      // ERREUR SERVEUR
+      // ========================================================
+
       if (!response.ok) {
         setMessage(
           data.message ||
             "Email ou mot de passe incorrect."
         );
+
         return;
       }
 
-      // Enregistrer le token
+      // ========================================================
+      // VÉRIFICATION TOKEN
+      // ========================================================
+
+      if (!data.token) {
+        setMessage(
+          "Connexion impossible : aucun token reçu."
+        );
+
+        return;
+      }
+
+      // ========================================================
+      // VÉRIFICATION UTILISATEUR
+      // ========================================================
+
+      if (!data.user) {
+        setMessage(
+          "Connexion impossible : aucun utilisateur reçu."
+        );
+
+        return;
+      }
+
+      // ========================================================
+      // SAUVEGARDER LE TOKEN
+      // ========================================================
+
       localStorage.setItem(
         "token",
         data.token
       );
 
-      // Enregistrer l'utilisateur
+      // ========================================================
+      // SAUVEGARDER L'UTILISATEUR
+      // ========================================================
+
       localStorage.setItem(
         "user",
         JSON.stringify(data.user)
       );
 
-      // Mettre à jour l'état
+      // ========================================================
+      // METTRE À JOUR L'ÉTAT
+      // ========================================================
+
       setUser(data.user);
 
-      // Vider le formulaire
+      // ========================================================
+      // INFORMER APP.JSX
+      // ========================================================
+
+      window.dispatchEvent(
+        new Event("userChanged")
+      );
+
+      // ========================================================
+      // VIDER LE FORMULAIRE
+      // ========================================================
+
       setEmail("");
       setPassword("");
 
+      console.log(
+        "Utilisateur connecté :",
+        data.user
+      );
+
+      console.log(
+        "Rôle :",
+        data.user.role
+      );
+
+      // ========================================================
+      // REDIRECTION
+      // ========================================================
+
+      if (data.user.role === "admin") {
+        console.log(
+          "Administrateur détecté : redirection vers /admin"
+        );
+      } else {
+        console.log(
+          "Utilisateur classique connecté."
+        );
+      }
+
       setMessage("Connexion réussie !");
 
-      // Charger les utilisateurs si admin
-      if (data.user.role === "admin") {
-        loadUsers();
-      }
     } catch (error) {
-      console.error("Erreur connexion :", error);
+      console.error(
+        "Erreur connexion :",
+        error
+      );
 
       setMessage(
         "Impossible de contacter le serveur."
@@ -146,108 +208,224 @@ function SeConnecter() {
     }
   }
 
-  // ============================================================
-  // DÉCONNEXION
-  // ============================================================
+  // ==========================================================
+  // CRÉATION DE COMPTE
+  // ==========================================================
 
-  function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  async function handleRegister(event) {
+    event.preventDefault();
 
-    setUser(null);
-    setUsers([]);
+    setMessage("");
 
-    // Retour à l'accueil
-    window.location.href = "/";
-  }
+    // ========================================================
+    // NOM UTILISATEUR
+    // ========================================================
 
-  // ============================================================
-  // SUPPRIMER UN UTILISATEUR
-  // ============================================================
+    if (username.trim().length < 3) {
+      setMessage(
+        "Le nom d'utilisateur doit contenir au moins 3 caractères."
+      );
 
-  async function deleteUser(id) {
-    if (
-      !window.confirm(
-        "Voulez-vous vraiment supprimer cet utilisateur ?"
-      )
-    ) {
       return;
     }
 
+    // ========================================================
+    // EMAIL
+    // ========================================================
+
+    if (!registerEmail.trim()) {
+      setMessage(
+        "L'adresse email est obligatoire."
+      );
+
+      return;
+    }
+
+    // ========================================================
+    // MOT DE PASSE
+    // ========================================================
+
+    if (registerPassword.length < 6) {
+      setMessage(
+        "Le mot de passe doit contenir au moins 6 caractères."
+      );
+
+      return;
+    }
+
+    // ========================================================
+    // CONFIRMATION
+    // ========================================================
+
+    if (
+      registerPassword !== confirmPassword
+    ) {
+      setMessage(
+        "Les mots de passe ne correspondent pas."
+      );
+
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        setMessage(
-          "Vous devez être connecté."
-        );
-        return;
-      }
-
       const response = await fetch(
-        `http://localhost:5000/api/admin/users/${id}`,
+        `${API_URL}/api/auth/register`,
         {
-          method: "DELETE",
+          method: "POST",
+
           headers: {
-            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
+
+          body: JSON.stringify({
+            username: username.trim(),
+            email: registerEmail.trim(),
+            password: registerPassword,
+          }),
         }
       );
 
       const data = await response.json();
 
+      console.log(
+        "Réponse inscription :",
+        data
+      );
+
+      // ========================================================
+      // ERREUR
+      // ========================================================
+
       if (!response.ok) {
         setMessage(
           data.message ||
-            "Impossible de supprimer l'utilisateur."
+            "Impossible de créer le compte."
         );
+
         return;
       }
 
+      // ========================================================
+      // SUCCÈS
+      // ========================================================
+
       setMessage(
-        "Utilisateur supprimé avec succès !"
+        "Compte créé avec succès ! Vous pouvez maintenant vous connecter."
       );
 
-      // Recharger la liste
-      loadUsers();
+      // ========================================================
+      // VIDER LE FORMULAIRE
+      // ========================================================
+
+      setUsername("");
+      setRegisterEmail("");
+      setRegisterPassword("");
+      setConfirmPassword("");
+
+      // ========================================================
+      // RETOUR CONNEXION
+      // ========================================================
+
+      setMode("login");
+
     } catch (error) {
       console.error(
-        "Erreur suppression :",
+        "Erreur création compte :",
         error
       );
 
       setMessage(
         "Impossible de contacter le serveur."
       );
+    } finally {
+      setLoading(false);
     }
   }
 
-  // ============================================================
-  // UTILISATEUR CONNECTÉ
-  // ============================================================
+  // ==========================================================
+  // PASSER À L'INSCRIPTION
+  // ==========================================================
 
-  if (user) {
-    const admin = user.role === "admin";
+  function switchToRegister() {
+    setMessage("");
+    setMode("register");
+  }
 
+  // ==========================================================
+  // REVENIR À LA CONNEXION
+  // ==========================================================
+
+  function switchToLogin() {
+    setMessage("");
+    setMode("login");
+  }
+
+  // ==========================================================
+  // DÉCONNEXION
+  // ==========================================================
+
+  function logout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    setUser(null);
+    setMessage("");
+    setMode("login");
+
+    window.dispatchEvent(
+      new Event("userChanged")
+    );
+
+    console.log(
+      "Utilisateur déconnecté."
+    );
+  }
+
+  // ==========================================================
+  // ADMIN DÉJÀ CONNECTÉ
+  // ==========================================================
+
+  /*
+    Si un administrateur arrive sur /se-connecter alors
+    qu'il est déjà connecté, on l'envoie directement
+    vers la vraie page d'administration.
+  */
+
+  if (user?.role === "admin") {
+    return (
+      <Navigate
+        to="/admin"
+        replace
+      />
+    );
+  }
+
+  // ==========================================================
+  // UTILISATEUR NORMAL DÉJÀ CONNECTÉ
+  // ==========================================================
+
+  if (user !== null) {
     return (
       <div className="connexion-page">
-
-        {/* ==================================================
-            COMPTE
-        ================================================== */}
 
         <div className="account-box">
 
           <h2>
-            {admin
-              ? "👑 Administration"
-              : "👤 Mon compte"}
+            👤 Mon compte
           </h2>
 
           <div className="account-info">
+
             <h3>
               Bonjour {user.username} 👋
             </h3>
+
+            <p>
+              Email : {user.email}
+            </p>
+
           </div>
 
           <button
@@ -255,79 +433,12 @@ function SeConnecter() {
             className="logout-button"
             onClick={logout}
           >
-            Se déconnecter
+            🚪 Se déconnecter
           </button>
 
         </div>
 
-        {/* ==================================================
-            ADMINISTRATION
-        ================================================== */}
-
-        {admin && (
-          <div className="admin-users-box">
-
-            <h2>
-              👥 Liste des utilisateurs
-            </h2>
-
-            {users.length === 0 ? (
-              <p>
-                Aucun utilisateur trouvé.
-              </p>
-            ) : (
-              <div className="users-list">
-
-                {users.map((utilisateur) => (
-                  <div
-                    className="user-row"
-                    key={utilisateur.id}
-                  >
-
-                    <div className="user-info">
-
-                      <strong>
-                        {utilisateur.username}
-                      </strong>
-
-                      <span>
-                        ID : {utilisateur.id}
-                      </span>
-
-                    </div>
-
-                    {/* L'admin ne peut pas
-                        supprimer son propre compte */}
-
-                    {Number(utilisateur.id) !==
-                      Number(user.id) && (
-                      <button
-                        type="button"
-                        className="delete-user-button"
-                        onClick={() =>
-                          deleteUser(
-                            utilisateur.id
-                          )
-                        }
-                      >
-                        🗑️ Supprimer
-                      </button>
-                    )}
-
-                  </div>
-                ))}
-
-              </div>
-            )}
-
-          </div>
-        )}
-
-        {/* ==================================================
-            MESSAGE
-        ================================================== */}
-
-        {message && (
+        {message !== "" && (
           <p className="connexion-message">
             {message}
           </p>
@@ -337,85 +448,233 @@ function SeConnecter() {
     );
   }
 
-  // ============================================================
-  // FORMULAIRE DE CONNEXION
-  // ============================================================
+  // ==========================================================
+  // PAGE CONNEXION / INSCRIPTION
+  // ==========================================================
 
   return (
     <div className="connexion-page">
 
       <div className="seconnecter-container">
 
-        <h1>
-          Se connecter
-        </h1>
+        {/* ====================================================
+            CONNEXION
+        ==================================================== */}
 
-        <p className="seconnecter-description">
-          Connectez-vous à votre compte WatchNext
-        </p>
+        {mode === "login" && (
+          <>
+            <h1>
+              Se connecter
+            </h1>
 
-        <form onSubmit={handleSubmit}>
+            <p className="seconnecter-description">
+              Connectez-vous à votre compte WatchNext
+            </p>
 
-          {/* EMAIL */}
+            <form onSubmit={handleLogin}>
 
-          <div className="form-group">
+              <div className="form-group">
 
-            <label htmlFor="email">
-              Adresse email
-            </label>
+                <label htmlFor="login-email">
+                  Adresse email
+                </label>
 
-            <input
-              id="email"
-              type="email"
-              placeholder="Votre adresse email"
-              value={email}
-              onChange={(event) =>
-                setEmail(event.target.value)
-              }
-              required
-            />
+                <input
+                  id="login-email"
+                  type="email"
+                  placeholder="Votre adresse email"
+                  value={email}
+                  onChange={(event) =>
+                    setEmail(event.target.value)
+                  }
+                  required
+                />
 
-          </div>
+              </div>
 
-          {/* MOT DE PASSE */}
+              <div className="form-group">
 
-          <div className="form-group">
+                <label htmlFor="login-password">
+                  Mot de passe
+                </label>
 
-            <label htmlFor="password">
-              Mot de passe
-            </label>
+                <input
+                  id="login-password"
+                  type="password"
+                  placeholder="Votre mot de passe"
+                  value={password}
+                  onChange={(event) =>
+                    setPassword(event.target.value)
+                  }
+                  required
+                />
 
-            <input
-              id="password"
-              type="password"
-              placeholder="Votre mot de passe"
-              value={password}
-              onChange={(event) =>
-                setPassword(event.target.value)
-              }
-              required
-            />
+              </div>
 
-          </div>
+              <button
+                type="submit"
+                className="login-button"
+                disabled={loading}
+              >
+                {loading
+                  ? "Connexion..."
+                  : "Se connecter"}
+              </button>
 
-          {/* BOUTON */}
+            </form>
 
-          <button
-            type="submit"
-            className="login-button"
-            disabled={loading}
+            <div className="create-account-section">
+
+              <p>
+                Vous n'avez pas encore de compte ?
+              </p>
+
+              <button
+                type="button"
+                className="create-account-button"
+                onClick={switchToRegister}
+              >
+                Créer un compte
+              </button>
+
+            </div>
+          </>
+        )}
+
+        {/* ====================================================
+            CRÉATION DE COMPTE
+        ==================================================== */}
+
+        {mode === "register" && (
+          <>
+            <h1>
+              Créer un compte
+            </h1>
+
+            <p className="seconnecter-description">
+              Rejoignez WatchNext
+            </p>
+
+            <form onSubmit={handleRegister}>
+
+              <div className="form-group">
+
+                <label htmlFor="register-username">
+                  Nom d'utilisateur
+                </label>
+
+                <input
+                  id="register-username"
+                  type="text"
+                  placeholder="Votre nom d'utilisateur"
+                  value={username}
+                  onChange={(event) =>
+                    setUsername(event.target.value)
+                  }
+                  required
+                />
+
+              </div>
+
+              <div className="form-group">
+
+                <label htmlFor="register-email">
+                  Adresse email
+                </label>
+
+                <input
+                  id="register-email"
+                  type="email"
+                  placeholder="Votre adresse email"
+                  value={registerEmail}
+                  onChange={(event) =>
+                    setRegisterEmail(event.target.value)
+                  }
+                  required
+                />
+
+              </div>
+
+              <div className="form-group">
+
+                <label htmlFor="register-password">
+                  Mot de passe
+                </label>
+
+                <input
+                  id="register-password"
+                  type="password"
+                  placeholder="Minimum 6 caractères"
+                  value={registerPassword}
+                  onChange={(event) =>
+                    setRegisterPassword(event.target.value)
+                  }
+                  required
+                />
+
+              </div>
+
+              <div className="form-group">
+
+                <label htmlFor="confirm-password">
+                  Confirmer le mot de passe
+                </label>
+
+                <input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="Confirmez votre mot de passe"
+                  value={confirmPassword}
+                  onChange={(event) =>
+                    setConfirmPassword(event.target.value)
+                  }
+                  required
+                />
+
+              </div>
+
+              <button
+                type="submit"
+                className="login-button"
+                disabled={loading}
+              >
+                {loading
+                  ? "Création..."
+                  : "Créer mon compte"}
+              </button>
+
+            </form>
+
+            <div className="create-account-section">
+
+              <p>
+                Vous avez déjà un compte ?
+              </p>
+
+              <button
+                type="button"
+                className="create-account-button"
+                onClick={switchToLogin}
+              >
+                Se connecter
+              </button>
+
+            </div>
+          </>
+        )}
+
+        {/* ====================================================
+            MESSAGE
+        ==================================================== */}
+
+        {message !== "" && (
+          <p
+            className={
+              message.includes("succès")
+                ? "login-message success"
+                : "login-message"
+            }
           >
-            {loading
-              ? "Connexion..."
-              : "Se connecter"}
-          </button>
-
-        </form>
-
-        {/* MESSAGE */}
-
-        {message && (
-          <p className="login-message">
             {message}
           </p>
         )}

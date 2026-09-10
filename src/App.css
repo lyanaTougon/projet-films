@@ -37,12 +37,24 @@ body {
   margin-left: 220px;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
+
+/* ============================================================
+   CONTENU DES PAGES
+============================================================ */
 
 .page-content {
   flex: 1;
   padding: 0 2rem 1.5rem;
 }
+
+/* Annule le padding pour les pages qui doivent être edge-to-edge */
+.page-content:has(.films-full-page),
+.page-content:has(.series-full-page) {
+  padding: 0;
+}
+
 
 /* ============================================================
    SIDEBAR
@@ -376,23 +388,39 @@ body {
 }
 
 /* ============================================================
+
    FLÈCHES CAROUSEL
+
 ============================================================ */
 
 .carousel-arrows {
+
   position: absolute;
 
-  bottom: 2rem;
-  right: 2.5rem;
+  top: 50%;
+
+  left: 0;
+
+  right: 0;
 
   display: flex;
 
-  gap: 0.75rem;
+  justify-content: space-between;
 
-  z-index: 2;
+  align-items: center;
+
+  padding: 0 1.5rem;
+
+  transform: translateY(-50%);
+
+  z-index: 10;
+
+  pointer-events: none;
+
 }
 
 .carousel-arrow {
+
   background: rgba(20, 20, 20, 0.6);
 
   border: 1px solid #cdcdcd;
@@ -402,6 +430,7 @@ body {
   font-size: 1.3rem;
 
   width: 38px;
+
   height: 38px;
 
   min-width: 38px;
@@ -413,19 +442,25 @@ body {
   display: flex;
 
   align-items: center;
+
   justify-content: center;
 
   flex-shrink: 0;
 
+  pointer-events: auto;
+
   transition: all 0.2s ease;
+
 }
 
 .carousel-arrow:hover {
+
   background: #fefefe;
 
   color: #1c1c1c;
 
   transform: scale(1.08);
+
 }
 
 /* ============================================================

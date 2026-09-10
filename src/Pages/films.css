@@ -7,13 +7,6 @@
   min-height: 100vh;
   padding: 2rem;
   box-sizing: border-box;
-
-  background: linear-gradient(
-    135deg,
-    #181818 0%,
-    #252525 50%,
-    #303030 100%
-  );
 }
 
 /* ============================================================

@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { SERIES } from "../Data/movie.jsx";
-
 import "./series.css";
+
+// ============================================================
+// CONFIGURATION
+// ============================================================
+
+const API_URL = "http://localhost:5000";
+const BASE_URL = import.meta.env.BASE_URL;
 
 // ============================================================
 // GESTION DES IMAGES
 // ============================================================
-
-const BASE_URL = import.meta.env.BASE_URL;
 
 function getImagePath(path) {
   if (!path) {
@@ -23,6 +26,10 @@ function getImagePath(path) {
     return path;
   }
 
+  if (path.startsWith("/projet-films/")) {
+    return path;
+  }
+
   return `${BASE_URL}${path.replace(/^\/+/, "")}`;
 }
 
@@ -32,15 +39,20 @@ function getImagePath(path) {
 
 function Stars({ rating }) {
   const roundedRating = Math.round(rating * 2) / 2;
+
   const fullStars = Math.floor(roundedRating);
+
   const halfStar = roundedRating % 1 !== 0;
+
   const emptyStars =
     5 - fullStars - (halfStar ? 1 : 0);
 
   return (
     <span className="rating-stars">
       {"★".repeat(fullStars)}
+
       {halfStar && "½"}
+
       {"☆".repeat(emptyStars)}
     </span>
   );
@@ -57,54 +69,224 @@ function Series() {
   // ÉTATS
   // ----------------------------------------------------------
 
+  const [series, setSeries] = useState([]);
+
   const [search, setSearch] = useState("");
+
   const [genre, setGenre] = useState("Tous");
+
   const [ratings, setRatings] = useState({});
-  const [loadingRatings, setLoadingRatings] = useState(true);
+
+  const [loadingSeries, setLoadingSeries] =
+    useState(true);
+
+  const [loadingRatings, setLoadingRatings] =
+    useState(true);
 
   // ----------------------------------------------------------
-  // RÉCUPÉRER LES MOYENNES
+  // RÉCUPÉRER LES SÉRIES DEPUIS POSTGRESQL
+  // ----------------------------------------------------------
+
+  async function loadSeries() {
+    try {
+      setLoadingSeries(true);
+
+      const response = await fetch(
+        `${API_URL}/api/movies`
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Impossible de récupérer les séries."
+        );
+      }
+
+      const data = await response.json();
+
+      let allMovies = [];
+
+      if (Array.isArray(data)) {
+        allMovies = data;
+      } else if (Array.isArray(data.movies)) {
+        allMovies = data.movies;
+      } else if (Array.isArray(data.results)) {
+        allMovies = data.results;
+      }
+
+      // ------------------------------------------------------
+      // ON GARDE UNIQUEMENT LES SÉRIES
+      // ------------------------------------------------------
+
+      const seriesList = allMovies.filter((item) => {
+        const type = String(item.type || "")
+          .trim()
+          .toLowerCase();
+
+        return (
+          type === "serie" ||
+          type === "série"
+        );
+      });
+
+      setSeries(seriesList);
+    } catch (error) {
+      console.error(
+        "Erreur récupération des séries :",
+        error
+      );
+
+      setSeries([]);
+    } finally {
+      setLoadingSeries(false);
+    }
+  }
+
+  // ----------------------------------------------------------
+  // CHARGEMENT INITIAL
   // ----------------------------------------------------------
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchSeries() {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/movies`
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "Impossible de récupérer les séries."
+          );
+        }
+
+        const data = await response.json();
+
+        let allMovies = [];
+
+        if (Array.isArray(data)) {
+          allMovies = data;
+        } else if (Array.isArray(data.movies)) {
+          allMovies = data.movies;
+        } else if (Array.isArray(data.results)) {
+          allMovies = data.results;
+        }
+
+        const seriesList = allMovies.filter((item) => {
+          const type = String(item.type || "")
+            .trim()
+            .toLowerCase();
+
+          return (
+            type === "serie" ||
+            type === "série"
+          );
+        });
+
+        if (!cancelled) {
+          setSeries(seriesList);
+        }
+      } catch (error) {
+        console.error(
+          "Erreur récupération des séries :",
+          error
+        );
+
+        if (!cancelled) {
+          setSeries([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingSeries(false);
+        }
+      }
+    }
+
+    fetchSeries();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ----------------------------------------------------------
+  // RECHARGER APRÈS AJOUT / MODIFICATION / SUPPRESSION
+  // ----------------------------------------------------------
+
+  useEffect(() => {
+    function handleMoviesChanged() {
+      loadSeries();
+    }
+
+    window.addEventListener(
+      "moviesChanged",
+      handleMoviesChanged
+    );
+
+    return () => {
+      window.removeEventListener(
+        "moviesChanged",
+        handleMoviesChanged
+      );
+    };
+  }, []);
+
+  // ----------------------------------------------------------
+  // RÉCUPÉRER LES MOYENNES DES NOTES
+  // ----------------------------------------------------------
+
+  useEffect(() => {
+    let cancelled = false;
+
     async function loadRatings() {
+      if (series.length === 0) {
+        if (!cancelled) {
+          setRatings({});
+          setLoadingRatings(false);
+        }
+
+        return;
+      }
+
       try {
         setLoadingRatings(true);
 
         const results = await Promise.all(
-          SERIES.map(async (series) => {
+          series.map(async (item) => {
             try {
               const response = await fetch(
-                `http://localhost:5000/api/ratings/movie/${series.id}`
+                `${API_URL}/api/ratings/movie/${item.id}`
               );
 
               if (!response.ok) {
                 return {
-                  id: series.id,
+                  id: item.id,
                   average_rating: 0,
-                  rating_count: 0
+                  rating_count: 0,
                 };
               }
 
               const data = await response.json();
 
               return {
-                id: series.id,
+                id: item.id,
+
                 average_rating:
                   Number(data.average_rating) || 0,
+
                 rating_count:
-                  Number(data.rating_count) || 0
+                  Number(data.rating_count) || 0,
               };
             } catch (error) {
               console.error(
-                `Erreur note de la série ${series.title} :`,
+                `Erreur note de la série ${item.title} :`,
                 error
               );
 
               return {
-                id: series.id,
+                id: item.id,
                 average_rating: 0,
-                rating_count: 0
+                rating_count: 0,
               };
             }
           })
@@ -115,23 +297,31 @@ function Series() {
         results.forEach((item) => {
           ratingsObject[item.id] = {
             average: item.average_rating,
-            count: item.rating_count
+            count: item.rating_count,
           };
         });
 
-        setRatings(ratingsObject);
+        if (!cancelled) {
+          setRatings(ratingsObject);
+        }
       } catch (error) {
         console.error(
           "Erreur récupération des notes :",
           error
         );
       } finally {
-        setLoadingRatings(false);
+        if (!cancelled) {
+          setLoadingRatings(false);
+        }
       }
     }
 
     loadRatings();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [series]);
 
   // ----------------------------------------------------------
   // GENRES
@@ -140,22 +330,26 @@ function Series() {
   const genres = [
     "Tous",
     ...new Set(
-      SERIES.map((series) => series.genre)
-    )
+      series
+        .map((item) => item.genre)
+        .filter(Boolean)
+    ),
   ];
 
   // ----------------------------------------------------------
   // FILTRAGE
   // ----------------------------------------------------------
 
-  const filteredSeries = SERIES.filter((series) => {
-    const matchesSearch = series.title
+  const filteredSeries = series.filter((item) => {
+    const title = String(item.title || "");
+
+    const matchesSearch = title
       .toLowerCase()
       .includes(search.toLowerCase());
 
     const matchesGenre =
       genre === "Tous" ||
-      series.genre === genre;
+      item.genre === genre;
 
     return matchesSearch && matchesGenre;
   });
@@ -164,9 +358,9 @@ function Series() {
   // TOP 5 DES SÉRIES
   // ----------------------------------------------------------
 
-  const topSeries = [...SERIES]
-    .filter((series) => {
-      const rating = ratings[series.id];
+  const topSeries = [...series]
+    .filter((item) => {
+      const rating = ratings[item.id];
 
       return rating && rating.count > 0;
     })
@@ -193,6 +387,7 @@ function Series() {
       ====================================================== */}
 
       <div className="series-header">
+
         <h1>
           Toutes les séries 📺
         </h1>
@@ -200,6 +395,7 @@ function Series() {
         <p>
           Retrouvez toutes les séries disponibles sur WatchNext.
         </p>
+
       </div>
 
       {/* ======================================================
@@ -209,6 +405,7 @@ function Series() {
       <div className="series-filters">
 
         <div className="series-search">
+
           <input
             type="text"
             placeholder="Rechercher une série..."
@@ -217,6 +414,7 @@ function Series() {
               setSearch(event.target.value)
             }
           />
+
         </div>
 
         <div className="series-genre">
@@ -232,6 +430,7 @@ function Series() {
               setGenre(event.target.value)
             }
           >
+
             {genres.map((item) => (
               <option
                 key={item}
@@ -240,6 +439,7 @@ function Series() {
                 {item}
               </option>
             ))}
+
           </select>
 
         </div>
@@ -247,208 +447,297 @@ function Series() {
       </div>
 
       {/* ======================================================
-          NOMBRE DE RÉSULTATS
+          CHARGEMENT
       ====================================================== */}
 
-      <div className="series-count">
-        {filteredSeries.length} série
-        {filteredSeries.length > 1 ? "s" : ""}
-      </div>
-
-      {/* ======================================================
-          CARTES DES SÉRIES
-      ====================================================== */}
-
-      {filteredSeries.length > 0 ? (
-
-        <div className="series-grid">
-
-          {filteredSeries.map((series) => {
-
-            const rating = ratings[series.id];
-
-            return (
-              <div
-                className="series-card"
-                key={series.id}
-                onClick={() =>
-                  navigate(`/film/${series.id}`)
-                }
-              >
-
-                <img
-                  src={getImagePath(series.poster)}
-                  alt={series.title}
-                  draggable="false"
-                />
-
-                <div className="series-card-info">
-
-                  <h2>
-                    {series.title}
-                  </h2>
-
-                  <span>
-                    {series.genre}
-                  </span>
-
-                  {/* ==================================================
-                      NOTE MOYENNE
-                  ================================================== */}
-
-                  {rating && rating.count > 0 ? (
-
-                    <div className="series-rating">
-
-                      <div className="series-rating-stars">
-                        <Stars
-                          rating={rating.average}
-                        />
-                      </div>
-
-                      <strong>
-                        {rating.average.toFixed(1)} / 5
-                      </strong>
-
-                      <small>
-                        ({rating.count})
-                      </small>
-
-                    </div>
-
-                  ) : (
-
-                    <div className="series-rating no-rating">
-                      ☆ Aucune note
-                    </div>
-
-                  )}
-
-                  {/* ==================================================
-                      BOUTON VOIR
-                  ================================================== */}
-
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-
-                      navigate(
-                        `/film/${series.id}`
-                      );
-                    }}
-                  >
-                    Voir
-                  </button>
-
-                </div>
-
-              </div>
-            );
-          })}
-
-        </div>
-
-      ) : (
-
+      {loadingSeries ? (
         <div className="series-no-results">
 
           <h2>
-            Aucune série trouvée 😕
+            Chargement des séries... 📺
           </h2>
 
           <p>
-            Aucune série ne correspond à votre recherche.
+            Récupération des séries depuis WatchNext.
           </p>
 
         </div>
+      ) : (
+        <>
+          {/* ==================================================
+              NOMBRE DE RÉSULTATS
+          ================================================== */}
 
-      )}
+          <div className="series-count">
 
-      {/* ======================================================
-          TOP 5 DES SÉRIES
-          PLACÉ EN BAS DE LA PAGE
-      ====================================================== */}
-
-      {!loadingRatings && topSeries.length > 0 && (
-
-        <section className="top-rated-section">
-
-          <div className="top-rated-header">
-
-            <h2>
-              🏆 Top 5 des séries les mieux notées
-            </h2>
-
-            <p>
-              Classement basé sur les notes de tous les utilisateurs.
-            </p>
+            {filteredSeries.length} série
+            {filteredSeries.length > 1 ? "s" : ""}
 
           </div>
 
-          <div className="top-rated-grid">
+          {/* ==================================================
+              CARTES DES SÉRIES
+          ================================================== */}
 
-            {topSeries.map((series, index) => {
+          {filteredSeries.length > 0 ? (
 
-              const rating = ratings[series.id];
+            <div className="series-grid">
 
-              return (
-                <div
-                  className="top-rated-card"
-                  key={series.id}
-                  onClick={() =>
-                    navigate(`/film/${series.id}`)
-                  }
-                >
+              {filteredSeries.map((item) => {
 
-                  <div className="top-position">
-                    {index === 0 && "🥇"}
-                    {index === 1 && "🥈"}
-                    {index === 2 && "🥉"}
-                    {index > 2 && `${index + 1}️⃣`}
-                  </div>
+                const rating =
+                  ratings[item.id];
 
-                  <img
-                    src={getImagePath(series.poster)}
-                    alt={series.title}
-                    draggable="false"
-                  />
+                return (
+                  <div
+                    className="series-card"
+                    key={item.id}
+                    onClick={() =>
+                      navigate(
+                        `/film/${item.id}`
+                      )
+                    }
+                  >
 
-                  <div className="top-rated-info">
+                    {/* ==============================
+                        IMAGE
+                    ============================== */}
 
-                    <h3>
-                      {series.title}
-                    </h3>
+                    <img
+                      src={getImagePath(
+                        item.poster
+                      )}
+                      alt={item.title}
+                      draggable="false"
+                      onError={(event) => {
+                        console.error(
+                          "Image introuvable :",
+                          event.currentTarget.src
+                        );
+                      }}
+                    />
 
-                    <div className="average-rating">
+                    {/* ==============================
+                        INFORMATIONS
+                    ============================== */}
 
-                      <Stars
-                        rating={rating.average}
-                      />
+                    <div className="series-card-info">
 
-                      <strong>
-                        {rating.average.toFixed(1)} / 5
-                      </strong>
+                      <h2>
+                        {item.title}
+                      </h2>
+
+                      <span>
+                        {item.genre ||
+                          "Genre non renseigné"}
+                      </span>
+
+                      {/* ============================
+                          NOTE MOYENNE
+                      ============================ */}
+
+                      {rating &&
+                      rating.count > 0 ? (
+
+                        <div className="series-rating">
+
+                          <div className="series-rating-stars">
+
+                            <Stars
+                              rating={
+                                rating.average
+                              }
+                            />
+
+                          </div>
+
+                          <strong>
+                            {rating.average.toFixed(
+                              1
+                            )}{" "}
+                            / 5
+                          </strong>
+
+                          <small>
+                            ({rating.count})
+                          </small>
+
+                        </div>
+
+                      ) : (
+
+                        <div className="series-rating no-rating">
+                          ☆ Aucune note
+                        </div>
+
+                      )}
+
+                      {/* ============================
+                          BOUTON VOIR
+                      ============================ */}
+
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+
+                          navigate(
+                            `/film/${item.id}`
+                          );
+                        }}
+                      >
+                        Voir
+                      </button>
 
                     </div>
 
-                    <span className="rating-count">
-                      {rating.count}{" "}
-                      {rating.count > 1
-                        ? "votes"
-                        : "vote"}
-                    </span>
-
                   </div>
+                );
+              })}
+
+            </div>
+
+          ) : (
+
+            /* =================================================
+               AUCUN RÉSULTAT
+            ================================================= */
+
+            <div className="series-no-results">
+
+              <h2>
+                Aucune série trouvée 😕
+              </h2>
+
+              <p>
+                Aucune série ne correspond à votre recherche.
+              </p>
+
+            </div>
+          )}
+
+          {/* ==================================================
+              TOP 5 DES SÉRIES
+          ================================================== */}
+
+          {!loadingRatings &&
+            topSeries.length > 0 && (
+
+              <section className="top-rated-section">
+
+                <div className="top-rated-header">
+
+                  <h2>
+                    🏆 Top 5 des séries les mieux notées
+                  </h2>
+
+                  <p>
+                    Classement basé sur les notes de tous les utilisateurs.
+                  </p>
 
                 </div>
-              );
-            })}
 
-          </div>
+                <div className="top-rated-grid">
 
-        </section>
+                  {topSeries.map(
+                    (item, index) => {
 
+                      const rating =
+                        ratings[item.id];
+
+                      return (
+                        <div
+                          className="top-rated-card"
+                          key={item.id}
+                          onClick={() =>
+                            navigate(
+                              `/film/${item.id}`
+                            )
+                          }
+                        >
+
+                          {/* ==========================
+                              CLASSEMENT
+                          ========================== */}
+
+                          <div className="top-position">
+
+                            {index === 0 &&
+                              "🥇"}
+
+                            {index === 1 &&
+                              "🥈"}
+
+                            {index === 2 &&
+                              "🥉"}
+
+                            {index > 2 &&
+                              `${index + 1}️⃣`}
+
+                          </div>
+
+                          {/* ==========================
+                              AFFICHE
+                          ========================== */}
+
+                          <img
+                            src={getImagePath(
+                              item.poster
+                            )}
+                            alt={item.title}
+                            draggable="false"
+                          />
+
+                          {/* ==========================
+                              INFORMATIONS
+                          ========================== */}
+
+                          <div className="top-rated-info">
+
+                            <h3>
+                              {item.title}
+                            </h3>
+
+                            <div className="average-rating">
+
+                              <Stars
+                                rating={
+                                  rating.average
+                                }
+                              />
+
+                              <strong>
+                                {rating.average.toFixed(
+                                  1
+                                )}{" "}
+                                / 5
+                              </strong>
+
+                            </div>
+
+                            <span className="rating-count">
+
+                              {rating.count}{" "}
+
+                              {rating.count > 1
+                                ? "votes"
+                                : "vote"}
+
+                            </span>
+
+                          </div>
+
+                        </div>
+                      );
+                    }
+                  )}
+
+                </div>
+
+              </section>
+            )}
+
+        </>
       )}
 
     </div>

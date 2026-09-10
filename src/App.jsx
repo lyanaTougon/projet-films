@@ -11,6 +11,7 @@ import {
   NavLink,
   useNavigate,
   useParams,
+  useLocation,
   Navigate,
 } from "react-router-dom";
 
@@ -27,29 +28,38 @@ import Note from "./Pages/note.jsx";
 import Favoris from "./Pages/favoris.jsx";
 
 // ============================================================
-// IMPORT DES DONNÉES
+// PAGE ADMIN
 // ============================================================
 
-import {
-  CAROUSEL_MOVIES,
-  CARD_MOVIES,
-  findMovieById,
-} from "./Data/movie.jsx";
+import Admin from "./Pages/Admin/admin.jsx";
 
 // ============================================================
-// IMPORT PAGE DÉTAIL
+// PAGE DÉTAIL
 // ============================================================
 
 import Details from "./details.jsx";
 
 // ============================================================
-// BASE URL
+// CONFIGURATION
 // ============================================================
 
+const API_URL = "http://localhost:5000";
 const BASE_URL = import.meta.env.BASE_URL;
 
 // ============================================================
-// IMAGES
+// FOND PAR ROUTE (pleine page, derrière sidebar + navbar)
+// ============================================================
+
+const FULL_BG_ROUTES = {
+  "/films": "linear-gradient(to bottom, #381d42c1, #0d0d0d)",
+  "/series": "linear-gradient(to bottom, #381d42c1, #0d0d0d)",
+  "/note": "linear-gradient(to bottom, #82628ec1, #42304a)",
+  "/favoris": "linear-gradient(to bottom, #82628ec1, #42304a)",
+  "/se-connecter": "linear-gradient(to bottom, #381d42c1, #7f7a81)",
+};
+
+// ============================================================
+// GESTION DES IMAGES
 // ============================================================
 
 function getImagePath(path) {
@@ -64,11 +74,15 @@ function getImagePath(path) {
     return path;
   }
 
+  if (path.startsWith("/projet-films/")) {
+    return path;
+  }
+
   return `${BASE_URL}${path.replace(/^\/+/, "")}`;
 }
 
 // ============================================================
-// RÉCUPÉRER L'UTILISATEUR
+// RÉCUPÉRER L'UTILISATEUR CONNECTÉ
 // ============================================================
 
 function getCurrentUser() {
@@ -86,19 +100,31 @@ function getCurrentUser() {
       error
     );
 
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+
     return null;
   }
 }
 
 // ============================================================
-// PROTECTION DES PAGES UTILISATEUR
+// PROTECTION PAGE ADMIN
 // ============================================================
 
-function UserOnlyRoute({ children, user }) {
-  if (user?.role === "admin") {
+function AdminOnlyRoute({ children, user }) {
+  if (!user) {
     return (
       <Navigate
         to="/se-connecter"
+        replace
+      />
+    );
+  }
+
+  if (user.role !== "admin") {
+    return (
+      <Navigate
+        to="/"
         replace
       />
     );
@@ -116,47 +142,45 @@ function Sidebar({ user }) {
 
   return (
     <nav className="sidebar">
-
       <div className="sidebar-logo">
         🎬 WatchNext
       </div>
 
       <ul className="sidebar-links">
+        <li>
+          <NavLink
+            to="/"
+            end
+          >
+            Accueil
+          </NavLink>
+        </li>
 
-        {admin ? (
-          <li>
-            <NavLink to="/se-connecter">
-              👑 Administration
-            </NavLink>
-          </li>
-        ) : (
-          <>
-            <li>
-              <NavLink to="/" end>
-                Accueil
-              </NavLink>
-            </li>
+        <li>
+          <NavLink to="/favoris">
+            Favoris
+          </NavLink>
+        </li>
 
-            <li>
-              <NavLink to="/favoris">
-                Favoris
-              </NavLink>
-            </li>
+        <li>
+          <NavLink to="/note">
+            Notes
+          </NavLink>
+        </li>
 
-            <li>
-              <NavLink to="/note">
-                Notes
-              </NavLink>
-            </li>
-
-            <li>
-              <NavLink to="/se-connecter">
-                Mon compte
-              </NavLink>
-            </li>
-          </>
-        )}
-
+        <li>
+          <NavLink
+            to={
+              admin
+                ? "/admin"
+                : "/se-connecter"
+            }
+          >
+            {admin
+              ? "👑 Mon compte"
+              : "Mon compte"}
+          </NavLink>
+        </li>
       </ul>
     </nav>
   );
@@ -172,53 +196,44 @@ function TopNavbar({ user }) {
 
   return (
     <div className="top-navbar">
+      <ul className="top-navbar-links">
+        <li>
+          <NavLink to="/films">
+            Films
+          </NavLink>
+        </li>
 
-      {admin ? (
-        <ul className="top-navbar-links">
-          <li>
-            <span className="admin-navbar-title">
-              👑 Espace administrateur
-            </span>
-          </li>
-        </ul>
-      ) : (
-        <ul className="top-navbar-links">
-          <li>
-            <NavLink to="/films">
-              Films
-            </NavLink>
-          </li>
-
-          <li>
-            <NavLink to="/series">
-              Séries
-            </NavLink>
-          </li>
-        </ul>
-      )}
+        <li>
+          <NavLink to="/series">
+            Séries
+          </NavLink>
+        </li>
+      </ul>
 
       <div className="top-navbar-right">
-
         <button
           type="button"
           className="user-icon"
           aria-label={
             admin
-              ? "Administration"
+              ? "Mon compte administrateur"
               : "Mon compte"
           }
           title={
             admin
-              ? "Administration"
+              ? "Mon compte administrateur"
               : "Mon compte"
           }
-          onClick={() =>
-            navigate("/se-connecter")
-          }
+          onClick={() => {
+            if (admin) {
+              navigate("/admin");
+            } else {
+              navigate("/se-connecter");
+            }
+          }}
         >
           {admin ? "👑" : "👤"}
         </button>
-
       </div>
     </div>
   );
@@ -237,7 +252,12 @@ function Carousel({ movies }) {
     movies.length > 0;
 
   const current = hasMovies
-    ? movies[index]
+    ? movies[
+        Math.min(
+          index,
+          movies.length - 1
+        )
+      ]
     : null;
 
   useEffect(() => {
@@ -246,11 +266,17 @@ function Carousel({ movies }) {
     }
 
     movies.forEach((movie) => {
-      const image = new Image();
+      const imagePath =
+        movie.banner ||
+        movie.poster;
 
-      image.src = getImagePath(
-        movie.banner || movie.poster
-      );
+      if (!imagePath) {
+        return;
+      }
+
+      const image = new Image();
+      image.src =
+        getImagePath(imagePath);
     });
   }, [movies, hasMovies]);
 
@@ -260,7 +286,8 @@ function Carousel({ movies }) {
     }
 
     document.body.style.background =
-      current.background || "#c5c4c4";
+      current.background ||
+      "#c5c4c4";
 
     return () => {
       document.body.style.background = "";
@@ -279,7 +306,10 @@ function Carousel({ movies }) {
 
   function nextSlide() {
     setIndex((oldIndex) => {
-      if (oldIndex === movies.length - 1) {
+      if (
+        oldIndex ===
+        movies.length - 1
+      ) {
         return 0;
       }
 
@@ -292,31 +322,42 @@ function Carousel({ movies }) {
       return;
     }
 
-    navigate(`/film/${current.id}`);
+    navigate(
+      `/film/${current.id}`
+    );
   }
 
   if (!hasMovies || !current) {
     return null;
   }
 
+  const imagePath =
+    current.banner ||
+    current.poster;
+
   return (
     <div className="carousel">
-
       <div
         className="carousel-slide"
         style={{
           background:
-            current.background || "#969696",
+            current.background ||
+            "#969696",
         }}
       >
-
-        <img
-          src={getImagePath(
-            current.banner || current.poster
-          )}
-          alt={current.title}
-          draggable="false"
-        />
+        {imagePath ? (
+          <img
+            src={getImagePath(
+              imagePath
+            )}
+            alt={current.title}
+            draggable="false"
+          />
+        ) : (
+          <div className="carousel-no-image">
+            🎬
+          </div>
+        )}
 
         <div className="carousel-info">
           <h3>
@@ -336,111 +377,356 @@ function Carousel({ movies }) {
           Voir plus
         </button>
 
-        <div className="carousel-arrows">
+<div className="carousel-arrows">
+  <button
+    type="button"
+    className="carousel-arrow"
+    onClick={previousSlide}
+    aria-label="Contenu précédent"
+  >
+    ‹
+  </button>
 
-          <button
-            type="button"
-            className="carousel-arrow"
-            onClick={previousSlide}
-            aria-label="Film précédent"
-          >
-            ‹
-          </button>
+  <button
+    type="button"
+    className="carousel-arrow"
+    onClick={nextSlide}
+    aria-label="Contenu suivant"
+  >
+    ›
+  </button>
+</div>
 
-          <button
-            type="button"
-            className="carousel-arrow"
-            onClick={nextSlide}
-            aria-label="Film suivant"
-          >
-            ›
-          </button>
-
+        <div className="carousel-indicators">
+          {movies.map(
+            (movie, movieIndex) => (
+              <button
+                key={
+                  movie.id ||
+                  movieIndex
+                }
+                type="button"
+                className={
+                  movieIndex === index
+                    ? "carousel-indicator active"
+                    : "carousel-indicator"
+                }
+                onClick={() =>
+                  setIndex(movieIndex)
+                }
+                aria-label={
+                  `Afficher ${movie.title}`
+                }
+              />
+            )
+          )}
         </div>
-
       </div>
     </div>
   );
 }
 
 // ============================================================
-// ACCUEIL
+// PAGE ACCUEIL
 // ============================================================
 
 function Accueil() {
   const navigate = useNavigate();
 
+  const [movies, setMovies] =
+    useState([]);
+
+  const [carouselMovies, setCarouselMovies] =
+    useState([]);
+
+  const [loadingMovies, setLoadingMovies] =
+    useState(true);
+
+  async function loadMovies() {
+    try {
+      setLoadingMovies(true);
+
+      const response = await fetch(
+        `${API_URL}/api/movies`
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Impossible de récupérer les films et séries."
+        );
+      }
+
+      const data =
+        await response.json();
+
+      let allMovies = [];
+
+      if (Array.isArray(data)) {
+        allMovies = data;
+      } else if (
+        Array.isArray(data.movies)
+      ) {
+        allMovies = data.movies;
+      } else if (
+        Array.isArray(data.results)
+      ) {
+        allMovies = data.results;
+      }
+
+      console.log(
+        "Contenus récupérés depuis PostgreSQL :",
+        allMovies
+      );
+
+      setMovies(allMovies);
+
+      const shuffled =
+        [...allMovies].sort(
+          () => Math.random() - 0.5
+        );
+
+      const randomSuggestions =
+        shuffled.slice(0, 4);
+
+      setCarouselMovies(
+        randomSuggestions
+      );
+    } catch (error) {
+      console.error(
+        "Erreur chargement Accueil :",
+        error
+      );
+
+      setMovies([]);
+      setCarouselMovies([]);
+    } finally {
+      setLoadingMovies(false);
+    }
+  }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadMovies();
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleMoviesChanged() {
+      loadMovies();
+    }
+
+    window.addEventListener(
+      "moviesChanged",
+      handleMoviesChanged
+    );
+
+    return () => {
+      window.removeEventListener(
+        "moviesChanged",
+        handleMoviesChanged
+      );
+    };
+  }, []);
+
+  const latestMovies =
+    [...movies]
+      .sort((a, b) => {
+        const dateA =
+          new Date(
+            a.created_at || 0
+          ).getTime();
+
+        const dateB =
+          new Date(
+            b.created_at || 0
+          ).getTime();
+
+        return dateB - dateA;
+      })
+      .slice(0, 4);
+
   return (
     <div className="home-main">
-
       <h2 className="section-title">
         4 suggestions de films / séries 🎬
       </h2>
 
-      <Carousel
-        movies={CAROUSEL_MOVIES}
-      />
+      {loadingMovies ? (
+        <div className="carousel-loading">
+          Chargement des suggestions...
+        </div>
+      ) : carouselMovies.length > 0 ? (
+        <Carousel
+          movies={carouselMovies}
+        />
+      ) : (
+        <div className="carousel-loading">
+          Aucun film ou série disponible.
+        </div>
+      )}
 
       <h2 className="section-title">
         4 derniers films / séries récemment ajoutés 🎬
       </h2>
 
-      <div className="results-section">
-
-        {CARD_MOVIES.map((movie) => (
-
-          <div
-            className="movie-card"
-            key={movie.id}
-          >
-
-            <img
-              src={getImagePath(movie.poster)}
-              alt={movie.title}
-              draggable="false"
-            />
-
-            <div className="movie-card-info">
-
-              <h3>
-                {movie.title}
-              </h3>
-
-              <span className="movie-card-genre">
-                {movie.genre}
-              </span>
-
-              <button
-                type="button"
-                className="movie-card-view"
-                onClick={() =>
-                  navigate(
-                    `/film/${movie.id}`
-                  )
-                }
+      {loadingMovies ? (
+        <div className="carousel-loading">
+          Chargement des contenus...
+        </div>
+      ) : latestMovies.length > 0 ? (
+        <div className="results-section">
+          {latestMovies.map(
+            (movie) => (
+              <div
+                className="movie-card"
+                key={movie.id}
               >
-                Voir
-              </button>
+                {movie.poster ? (
+                  <img
+                    src={getImagePath(
+                      movie.poster
+                    )}
+                    alt={movie.title}
+                    draggable="false"
+                  />
+                ) : (
+                  <div className="no-poster">
+                    🎬
+                  </div>
+                )}
 
-            </div>
-          </div>
+                <div className="movie-card-info">
+                  <h3>
+                    {movie.title}
+                  </h3>
 
-        ))}
+                  <span className="movie-card-type">
+                    {String(
+                      movie.type || ""
+                    ).toLowerCase() ===
+                      "serie" ||
+                    String(
+                      movie.type || ""
+                    ).toLowerCase() ===
+                      "série"
+                      ? "📺 Série"
+                      : "🎬 Film"}
+                  </span>
 
-      </div>
+                  {movie.genre && (
+                    <span className="movie-card-genre">
+                      {movie.genre}
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    className="movie-card-view"
+                    onClick={() =>
+                      navigate(
+                        `/film/${movie.id}`
+                      )
+                    }
+                  >
+                    Voir
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      ) : (
+        <div className="carousel-loading">
+          Aucun contenu disponible.
+        </div>
+      )}
     </div>
   );
 }
 
 // ============================================================
-// DÉTAIL FILM / SÉRIE
+// PAGE DÉTAIL FILM / SÉRIE
 // ============================================================
 
 function FilmDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const movie = findMovieById(id);
+  const [movie, setMovie] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  async function loadMovie() {
+    try {
+      setLoading(true);
+
+      const response =
+        await fetch(
+          `${API_URL}/api/movies/${id}`
+        );
+
+      if (!response.ok) {
+        if (
+          response.status === 404
+        ) {
+          setMovie(null);
+          return;
+        }
+
+        throw new Error(
+          "Impossible de récupérer ce contenu."
+        );
+      }
+
+      const data =
+        await response.json();
+
+      setMovie(data);
+    } catch (error) {
+      console.error(
+        "Erreur chargement détail :",
+        error
+      );
+
+      setMovie(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadMovie();
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [id]);
+
+  useEffect(() => {
+    function handleMoviesChanged() {
+      loadMovie();
+    }
+
+    window.addEventListener(
+      "moviesChanged",
+      handleMoviesChanged
+    );
+
+    return () => {
+      window.removeEventListener(
+        "moviesChanged",
+        handleMoviesChanged
+      );
+    };
+  }, [id]);
 
   useEffect(() => {
     if (!movie) {
@@ -448,17 +734,27 @@ function FilmDetail() {
     }
 
     document.body.style.background =
-      movie.background || "#c5c4c4";
+      movie.background ||
+      "#c5c4c4";
 
     return () => {
       document.body.style.background = "";
     };
   }, [movie]);
 
+  if (loading) {
+    return (
+      <div className="film-detail">
+        <h2>
+          Chargement...
+        </h2>
+      </div>
+    );
+  }
+
   if (!movie) {
     return (
       <div className="film-detail">
-
         <h2>
           Film ou série introuvable
         </h2>
@@ -472,13 +768,178 @@ function FilmDetail() {
         >
           ← Retour à l'accueil
         </button>
-
       </div>
     );
   }
 
   return (
-    <Details movie={movie} />
+    <Details
+      movie={movie}
+    />
+  );
+}
+
+// ============================================================
+// CONTENU DE L'APPLICATION (À L'INTÉRIEUR DU ROUTER)
+// ============================================================
+
+function AppRoutes({ user }) {
+  const location = useLocation();
+
+  // ----------------------------------------------------------
+  // FOND PLEIN ÉCRAN (derrière sidebar + navbar) SELON LA ROUTE
+  // ----------------------------------------------------------
+
+  useEffect(() => {
+    const bg = FULL_BG_ROUTES[location.pathname];
+
+    if (bg) {
+      document.body.style.background = bg;
+    } else {
+      document.body.style.background = "";
+    }
+  }, [location.pathname]);
+
+  return (
+    <div className="app">
+
+      {/* ================================================
+          SIDEBAR
+      ================================================= */}
+
+      <Sidebar
+        user={user}
+      />
+
+      <div className="app-content">
+
+        {/* ==============================================
+            BARRE DU HAUT
+        =============================================== */}
+
+        <TopNavbar
+          user={user}
+        />
+
+        {/* ==============================================
+            CONTENU
+        =============================================== */}
+
+        <main className="page-content">
+
+          <Routes>
+
+            {/* ==========================================
+                ACCUEIL
+            =========================================== */}
+
+            <Route
+              path="/"
+              element={
+                <Accueil />
+              }
+            />
+
+            {/* ==========================================
+                FILMS
+            =========================================== */}
+
+            <Route
+              path="/films"
+              element={
+                <Films />
+              }
+            />
+
+            {/* ==========================================
+                SÉRIES
+            =========================================== */}
+
+            <Route
+              path="/series"
+              element={
+                <Series />
+              }
+            />
+
+            {/* ==========================================
+                FAVORIS
+            =========================================== */}
+
+            <Route
+              path="/favoris"
+              element={
+                <Favoris />
+              }
+            />
+
+            {/* ==========================================
+                NOTES
+            =========================================== */}
+
+            <Route
+              path="/note"
+              element={
+                <Note />
+              }
+            />
+
+            {/* ==========================================
+                CONNEXION
+            =========================================== */}
+
+            <Route
+              path="/se-connecter"
+              element={
+                <SeConnecter />
+              }
+            />
+
+            {/* ==========================================
+                ADMIN
+            =========================================== */}
+
+            <Route
+              path="/admin"
+              element={
+                <AdminOnlyRoute
+                  user={user}
+                >
+                  <Admin />
+                </AdminOnlyRoute>
+              }
+            />
+
+            {/* ==========================================
+                DÉTAIL FILM / SÉRIE
+            =========================================== */}
+
+            <Route
+              path="/film/:id"
+              element={
+                <FilmDetail />
+              }
+            />
+
+            {/* ==========================================
+                PAGE INEXISTANTE
+            =========================================== */}
+
+            <Route
+              path="*"
+              element={
+                <Navigate
+                  to="/"
+                  replace
+                />
+              }
+            />
+
+          </Routes>
+
+        </main>
+      </div>
+    </div>
   );
 }
 
@@ -487,15 +948,14 @@ function FilmDetail() {
 // ============================================================
 
 function App() {
-
-  const [user, setUser] = useState(
-    getCurrentUser()
-  );
+  const [user, setUser] =
+    useState(getCurrentUser);
 
   useEffect(() => {
-
     function updateUser() {
-      setUser(getCurrentUser());
+      setUser(
+        getCurrentUser()
+      );
     }
 
     window.addEventListener(
@@ -503,119 +963,29 @@ function App() {
       updateUser
     );
 
-    const interval = setInterval(
-      updateUser,
-      500
+    window.addEventListener(
+      "userChanged",
+      updateUser
     );
 
     return () => {
-
       window.removeEventListener(
         "storage",
         updateUser
       );
 
-      clearInterval(interval);
+      window.removeEventListener(
+        "userChanged",
+        updateUser
+      );
     };
-
   }, []);
 
   return (
-    <BrowserRouter basename={BASE_URL}>
-
-      <div className="app">
-
-        <Sidebar user={user} />
-
-        <div className="app-content">
-
-          <TopNavbar user={user} />
-
-          <main className="page-content">
-
-            <Routes>
-
-              <Route
-                path="/"
-                element={
-                  <UserOnlyRoute user={user}>
-                    <Accueil />
-                  </UserOnlyRoute>
-                }
-              />
-
-              <Route
-                path="/films"
-                element={
-                  <UserOnlyRoute user={user}>
-                    <Films />
-                  </UserOnlyRoute>
-                }
-              />
-
-              <Route
-                path="/series"
-                element={
-                  <UserOnlyRoute user={user}>
-                    <Series />
-                  </UserOnlyRoute>
-                }
-              />
-
-              <Route
-                path="/favoris"
-                element={
-                  <UserOnlyRoute user={user}>
-                    <Favoris />
-                  </UserOnlyRoute>
-                }
-              />
-
-              <Route
-                path="/note"
-                element={
-                  <UserOnlyRoute user={user}>
-                    <Note />
-                  </UserOnlyRoute>
-                }
-              />
-
-              <Route
-                path="/se-connecter"
-                element={
-                  <SeConnecter />
-                }
-              />
-
-              <Route
-                path="/film/:id"
-                element={
-                  <UserOnlyRoute user={user}>
-                    <FilmDetail />
-                  </UserOnlyRoute>
-                }
-              />
-
-              <Route
-                path="*"
-                element={
-                  <Navigate
-                    to={
-                      user?.role === "admin"
-                        ? "/se-connecter"
-                        : "/"
-                    }
-                    replace
-                  />
-                }
-              />
-
-            </Routes>
-
-          </main>
-        </div>
-      </div>
-
+    <BrowserRouter
+      basename={BASE_URL}
+    >
+      <AppRoutes user={user} />
     </BrowserRouter>
   );
 }
