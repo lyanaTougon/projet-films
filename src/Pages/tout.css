@@ -1,0 +1,645 @@
+/* ============================================================
+   PAGE TOUT
+   ============================================================ */
+
+.tout-page {
+  width: 100%;
+  min-height: 100vh;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+
+/* ============================================================
+   EN-TÊTE
+   ============================================================ */
+
+.tout-header {
+  margin-bottom: 2rem;
+}
+
+.tout-header h1 {
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.tout-header p {
+  color: #b5b5b5;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+
+/* ============================================================
+   FILTRES
+   ============================================================ */
+
+.tout-filters {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+
+/* ============================================================
+   RECHERCHE
+   ============================================================ */
+
+.tout-search {
+  flex: 1;
+}
+
+.tout-search input {
+  width: 100%;
+  height: 45px;
+
+  padding: 0 1rem;
+  box-sizing: border-box;
+
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+
+  font-size: 0.9rem;
+  outline: none;
+
+  transition:
+    border 0.2s ease,
+    background 0.2s ease;
+}
+
+.tout-search input::placeholder {
+  color: #999;
+}
+
+.tout-search input:focus {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+
+/* ============================================================
+   SELECTS
+   ============================================================ */
+
+.tout-select {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.tout-select label {
+  color: white;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.tout-select select {
+  height: 45px;
+
+  padding: 0 1rem;
+
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+
+  background: #222;
+  color: white;
+
+  font-size: 0.9rem;
+
+  outline: none;
+  cursor: pointer;
+
+  transition:
+    border 0.2s ease,
+    background 0.2s ease;
+}
+
+.tout-select select:hover {
+  background: #292929;
+}
+
+.tout-select select:focus {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+
+/* ============================================================
+   RÉSULTAT
+   ============================================================ */
+
+.tout-result {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  margin-bottom: 1.5rem;
+
+  color: #aaa;
+
+  font-size: 0.85rem;
+}
+
+.tout-result strong {
+  color: white;
+
+  font-size: 1rem;
+}
+
+
+/* ============================================================
+   GRILLE
+   ============================================================ */
+
+.tout-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(auto-fill, minmax(200px, 1fr));
+
+  gap: 1.5rem;
+
+  width: 100%;
+}
+
+
+/* ============================================================
+   CARTE
+   ============================================================ */
+
+.tout-card {
+  position: relative;
+
+  background: rgba(255, 255, 255, 0.06);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  border-radius: 14px;
+
+  overflow: hidden;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease,
+    box-shadow 0.25s ease,
+    border 0.25s ease;
+}
+
+.tout-card:hover {
+  transform: translateY(-7px);
+
+  background: rgba(255, 255, 255, 0.1);
+
+  border-color: rgba(255, 255, 255, 0.15);
+
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+
+/* ============================================================
+   IMAGE
+   ============================================================ */
+
+.tout-image {
+  position: relative;
+
+  width: 100%;
+  height: 300px;
+
+  overflow: hidden;
+
+  background: #444;
+}
+
+.tout-image img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  display: block;
+
+  transition: transform 0.3s ease;
+}
+
+.tout-card:hover .tout-image img {
+  transform: scale(1.04);
+}
+
+
+/* ============================================================
+   IMAGE MANQUANTE
+   ============================================================ */
+
+.tout-no-image {
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #444;
+
+  color: white;
+
+  font-size: 3rem;
+}
+
+
+/* ============================================================
+   BADGE FILM / SÉRIE
+   ============================================================ */
+
+.tout-type {
+  position: absolute;
+
+  top: 10px;
+  left: 10px;
+
+  z-index: 2;
+
+  padding: 0.35rem 0.7rem;
+
+  border-radius: 999px;
+
+  background: rgba(0, 0, 0, 0.152);
+
+  border: 1px solid rgba(255, 255, 255, 0.15);
+
+  color: white;
+
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  backdrop-filter: blur(6px);
+}
+
+
+/* ============================================================
+   CONTENU DE LA CARTE
+   ============================================================ */
+
+.tout-card-content {
+  padding: 0.9rem;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  gap: 0.45rem;
+}
+
+
+/* ============================================================
+   TITRE
+   ============================================================ */
+
+.tout-card-content h2 {
+  width: 100%;
+
+  color: white;
+
+  font-size: 1rem;
+  font-weight: 600;
+
+  text-align: center;
+
+  margin: 0;
+
+  line-height: 1.3;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+
+  overflow: hidden;
+}
+
+
+/* ============================================================
+   GENRE
+   ============================================================ */
+
+.tout-card-genre {
+  color: #aaa;
+
+  font-size: 0.8rem;
+
+  text-align: center;
+}
+
+
+/* ============================================================
+   NOTES
+   ============================================================ */
+
+.tout-rating {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  margin: 8px 0;
+}
+
+.tout-stars {
+  color: #f5c518;
+
+  font-size: 1rem;
+
+  letter-spacing: 2px;
+
+  white-space: nowrap;
+}
+
+.tout-rating strong {
+  color: white;
+
+  font-size: 0.9rem;
+}
+
+.tout-rating > span:last-child {
+  color: #999;
+
+  font-size: 0.75rem;
+}
+
+
+/* ============================================================
+   AUCUNE NOTE
+   ============================================================ */
+
+.tout-no-rating {
+  color: #999;
+
+  opacity: 0.7;
+
+  font-size: 0.85rem;
+}
+
+
+/* ============================================================
+   BOUTON
+   ============================================================ */
+
+.tout-card-content button {
+  margin-top: 0.45rem;
+
+  border: none;
+
+  border-radius: 999px;
+
+  padding: 0.5rem 1.4rem;
+
+  background: white;
+
+  color: #1c1c1c;
+
+  font-size: 0.8rem;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.tout-card-content button:hover {
+  background: #ddd;
+
+  transform: scale(1.05);
+
+  box-shadow:
+    0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+
+/* ============================================================
+   MESSAGE
+   ============================================================ */
+
+.tout-message {
+  width: 100%;
+
+  padding: 4rem 1rem;
+
+  box-sizing: border-box;
+
+  text-align: center;
+}
+
+.tout-message h2 {
+  color: white;
+
+  font-size: 1.4rem;
+
+  margin: 0 0 0.5rem;
+}
+
+.tout-message p {
+  color: #999;
+
+  font-size: 0.9rem;
+
+  margin: 0 0 1.5rem;
+}
+
+
+/* ============================================================
+   BOUTON RÉINITIALISER
+   ============================================================ */
+
+.tout-message button {
+  border: none;
+
+  border-radius: 999px;
+
+  padding: 0.6rem 1.4rem;
+
+  background: white;
+
+  color: #1c1c1c;
+
+  font-size: 0.85rem;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.tout-message button:hover {
+  background: #ddd;
+
+  transform: scale(1.05);
+}
+
+
+/* ============================================================
+   RÉSUMÉ
+   ============================================================ */
+
+.tout-summary {
+  display: flex;
+
+  align-items: center;
+
+  gap: 1rem;
+
+  margin-top: 2rem;
+
+  padding-bottom: 2rem;
+}
+
+.tout-summary-item {
+  display: flex;
+
+  align-items: center;
+
+  gap: 0.35rem;
+
+  padding: 0.6rem 1rem;
+
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.06);
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  color: #aaa;
+
+  font-size: 0.85rem;
+}
+
+.tout-summary-item strong {
+  color: white;
+
+  font-size: 1rem;
+}
+
+.tout-summary-item span {
+  color: #aaa;
+
+  font-size: 0.8rem;
+}
+
+
+/* ============================================================
+   RESPONSIVE - 1000 PX
+   ============================================================ */
+
+@media (max-width: 1000px) {
+
+  .tout-grid {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+
+}
+
+
+/* ============================================================
+   RESPONSIVE - TABLETTE
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+  .tout-page {
+    padding: 1rem;
+  }
+
+  .tout-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .tout-filters {
+    flex-direction: column;
+
+    align-items: stretch;
+  }
+
+  .tout-search {
+    width: 100%;
+  }
+
+  .tout-select {
+    justify-content: space-between;
+  }
+
+  .tout-select select {
+    flex: 1;
+  }
+
+  .tout-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    gap: 1rem;
+  }
+
+  .tout-image {
+    height: 250px;
+  }
+
+  .tout-summary {
+    flex-wrap: wrap;
+  }
+
+}
+
+
+/* ============================================================
+   RESPONSIVE - MOBILE
+   ============================================================ */
+
+@media (max-width: 450px) {
+
+  .tout-page {
+    padding: 1rem 0.75rem;
+  }
+
+  .tout-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tout-image {
+    height: 350px;
+  }
+
+  .tout-summary {
+    flex-direction: column;
+
+    align-items: stretch;
+  }
+
+  .tout-summary-item {
+    justify-content: center;
+  }
+
+  .tout-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .tout-header p {
+    font-size: 0.85rem;
+  }
+
+}

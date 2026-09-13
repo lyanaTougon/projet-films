@@ -21,6 +21,7 @@ import "./App.css";
 // IMPORT DES PAGES
 // ============================================================
 
+import Tout from "./Pages/tout.jsx";
 import Films from "./Pages/films.jsx";
 import Series from "./Pages/series.jsx";
 import SeConnecter from "./Pages/seconnecter.jsx";
@@ -47,10 +48,11 @@ const API_URL = "http://localhost:5000";
 const BASE_URL = import.meta.env.BASE_URL;
 
 // ============================================================
-// FOND PAR ROUTE (pleine page, derrière sidebar + navbar)
+// FOND PAR ROUTE
 // ============================================================
 
 const FULL_BG_ROUTES = {
+  "/tout": "linear-gradient(to bottom, #381d42c1, #0d0d0d)",
   "/films": "linear-gradient(to bottom, #381d42c1, #0d0d0d)",
   "/series": "linear-gradient(to bottom, #381d42c1, #0d0d0d)",
   "/note": "linear-gradient(to bottom, #82628ec1, #42304a)",
@@ -142,11 +144,13 @@ function Sidebar({ user }) {
 
   return (
     <nav className="sidebar">
+
       <div className="sidebar-logo">
         🎬 WatchNext
       </div>
 
       <ul className="sidebar-links">
+
         <li>
           <NavLink
             to="/"
@@ -181,7 +185,9 @@ function Sidebar({ user }) {
               : "Mon compte"}
           </NavLink>
         </li>
+
       </ul>
+
     </nav>
   );
 }
@@ -192,25 +198,44 @@ function Sidebar({ user }) {
 
 function TopNavbar({ user }) {
   const navigate = useNavigate();
+
   const admin = user?.role === "admin";
 
   return (
     <div className="top-navbar">
+
       <ul className="top-navbar-links">
+
+        {/* TOUT */}
+
+        <li>
+          <NavLink to="/tout">
+            Tout
+          </NavLink>
+        </li>
+
+        {/* FILMS */}
+
         <li>
           <NavLink to="/films">
             Films
           </NavLink>
         </li>
 
+        {/* SÉRIES */}
+
         <li>
           <NavLink to="/series">
             Séries
           </NavLink>
         </li>
+
       </ul>
 
+      {/* COMPTE */}
+
       <div className="top-navbar-right">
+
         <button
           type="button"
           className="user-icon"
@@ -234,7 +259,9 @@ function TopNavbar({ user }) {
         >
           {admin ? "👑" : "👤"}
         </button>
+
       </div>
+
     </div>
   );
 }
@@ -245,6 +272,7 @@ function TopNavbar({ user }) {
 
 function Carousel({ movies }) {
   const [index, setIndex] = useState(0);
+
   const navigate = useNavigate();
 
   const hasMovies =
@@ -259,6 +287,8 @@ function Carousel({ movies }) {
         )
       ]
     : null;
+
+  // Préchargement des images
 
   useEffect(() => {
     if (!hasMovies) {
@@ -275,10 +305,13 @@ function Carousel({ movies }) {
       }
 
       const image = new Image();
+
       image.src =
         getImagePath(imagePath);
     });
   }, [movies, hasMovies]);
+
+  // Fond selon le contenu
 
   useEffect(() => {
     if (!current) {
@@ -294,6 +327,8 @@ function Carousel({ movies }) {
     };
   }, [current]);
 
+  // Slide précédent
+
   function previousSlide() {
     setIndex((oldIndex) => {
       if (oldIndex === 0) {
@@ -303,6 +338,8 @@ function Carousel({ movies }) {
       return oldIndex - 1;
     });
   }
+
+  // Slide suivant
 
   function nextSlide() {
     setIndex((oldIndex) => {
@@ -316,6 +353,8 @@ function Carousel({ movies }) {
       return oldIndex + 1;
     });
   }
+
+  // Voir détail
 
   function voirPlus() {
     if (!current) {
@@ -337,6 +376,7 @@ function Carousel({ movies }) {
 
   return (
     <div className="carousel">
+
       <div
         className="carousel-slide"
         style={{
@@ -345,6 +385,9 @@ function Carousel({ movies }) {
             "#969696",
         }}
       >
+
+        {/* IMAGE */}
+
         {imagePath ? (
           <img
             src={getImagePath(
@@ -359,7 +402,10 @@ function Carousel({ movies }) {
           </div>
         )}
 
+        {/* INFORMATIONS */}
+
         <div className="carousel-info">
+
           <h3>
             {current.title}
           </h3>
@@ -367,7 +413,10 @@ function Carousel({ movies }) {
           <p className="carousel-synopsis">
             {current.synopsis}
           </p>
+
         </div>
+
+        {/* BOUTON */}
 
         <button
           type="button"
@@ -377,27 +426,34 @@ function Carousel({ movies }) {
           Voir plus
         </button>
 
-<div className="carousel-arrows">
-  <button
-    type="button"
-    className="carousel-arrow"
-    onClick={previousSlide}
-    aria-label="Contenu précédent"
-  >
-    ‹
-  </button>
+        {/* FLÈCHES */}
 
-  <button
-    type="button"
-    className="carousel-arrow"
-    onClick={nextSlide}
-    aria-label="Contenu suivant"
-  >
-    ›
-  </button>
-</div>
+        <div className="carousel-arrows">
+
+          <button
+            type="button"
+            className="carousel-arrow"
+            onClick={previousSlide}
+            aria-label="Contenu précédent"
+          >
+            ‹
+          </button>
+
+          <button
+            type="button"
+            className="carousel-arrow"
+            onClick={nextSlide}
+            aria-label="Contenu suivant"
+          >
+            ›
+          </button>
+
+        </div>
+
+        {/* INDICATEURS */}
 
         <div className="carousel-indicators">
+
           {movies.map(
             (movie, movieIndex) => (
               <button
@@ -420,8 +476,11 @@ function Carousel({ movies }) {
               />
             )
           )}
+
         </div>
+
       </div>
+
     </div>
   );
 }
@@ -491,6 +550,7 @@ function Accueil() {
       setCarouselMovies(
         randomSuggestions
       );
+
     } catch (error) {
       console.error(
         "Erreur chargement Accueil :",
@@ -499,6 +559,7 @@ function Accueil() {
 
       setMovies([]);
       setCarouselMovies([]);
+
     } finally {
       setLoadingMovies(false);
     }
@@ -515,6 +576,7 @@ function Accueil() {
   }, []);
 
   useEffect(() => {
+
     function handleMoviesChanged() {
       loadMovies();
     }
@@ -530,11 +592,13 @@ function Accueil() {
         handleMoviesChanged
       );
     };
+
   }, []);
 
   const latestMovies =
     [...movies]
       .sort((a, b) => {
+
         const dateA =
           new Date(
             a.created_at || 0
@@ -551,41 +615,63 @@ function Accueil() {
 
   return (
     <div className="home-main">
+
+      {/* ==================================================
+          SUGGESTIONS
+      ================================================== */}
+
       <h2 className="section-title">
         4 suggestions de films / séries 🎬
       </h2>
 
       {loadingMovies ? (
+
         <div className="carousel-loading">
           Chargement des suggestions...
         </div>
+
       ) : carouselMovies.length > 0 ? (
+
         <Carousel
           movies={carouselMovies}
         />
+
       ) : (
+
         <div className="carousel-loading">
           Aucun film ou série disponible.
         </div>
+
       )}
+
+      {/* ==================================================
+          DERNIERS AJOUTS
+      ================================================== */}
 
       <h2 className="section-title">
         4 derniers films / séries récemment ajoutés 🎬
       </h2>
 
       {loadingMovies ? (
+
         <div className="carousel-loading">
           Chargement des contenus...
         </div>
+
       ) : latestMovies.length > 0 ? (
+
         <div className="results-section">
+
           {latestMovies.map(
             (movie) => (
+
               <div
                 className="movie-card"
                 key={movie.id}
               >
+
                 {movie.poster ? (
+
                   <img
                     src={getImagePath(
                       movie.poster
@@ -593,18 +679,23 @@ function Accueil() {
                     alt={movie.title}
                     draggable="false"
                   />
+
                 ) : (
+
                   <div className="no-poster">
                     🎬
                   </div>
+
                 )}
 
                 <div className="movie-card-info">
+
                   <h3>
                     {movie.title}
                   </h3>
 
                   <span className="movie-card-type">
+
                     {String(
                       movie.type || ""
                     ).toLowerCase() ===
@@ -615,6 +706,7 @@ function Accueil() {
                       "série"
                       ? "📺 Série"
                       : "🎬 Film"}
+
                   </span>
 
                   {movie.genre && (
@@ -634,16 +726,24 @@ function Accueil() {
                   >
                     Voir
                   </button>
+
                 </div>
+
               </div>
+
             )
           )}
+
         </div>
+
       ) : (
+
         <div className="carousel-loading">
           Aucun contenu disponible.
         </div>
+
       )}
+
     </div>
   );
 }
@@ -654,6 +754,7 @@ function Accueil() {
 
 function FilmDetail() {
   const { id } = useParams();
+
   const navigate = useNavigate();
 
   const [movie, setMovie] =
@@ -672,6 +773,7 @@ function FilmDetail() {
         );
 
       if (!response.ok) {
+
         if (
           response.status === 404
         ) {
@@ -688,19 +790,23 @@ function FilmDetail() {
         await response.json();
 
       setMovie(data);
+
     } catch (error) {
+
       console.error(
         "Erreur chargement détail :",
         error
       );
 
       setMovie(null);
+
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
+
     const timer = setTimeout(() => {
       loadMovie();
     }, 0);
@@ -708,9 +814,11 @@ function FilmDetail() {
     return () => {
       clearTimeout(timer);
     };
+
   }, [id]);
 
   useEffect(() => {
+
     function handleMoviesChanged() {
       loadMovie();
     }
@@ -726,9 +834,11 @@ function FilmDetail() {
         handleMoviesChanged
       );
     };
+
   }, [id]);
 
   useEffect(() => {
+
     if (!movie) {
       return;
     }
@@ -740,14 +850,17 @@ function FilmDetail() {
     return () => {
       document.body.style.background = "";
     };
+
   }, [movie]);
 
   if (loading) {
     return (
       <div className="film-detail">
+
         <h2>
           Chargement...
         </h2>
+
       </div>
     );
   }
@@ -755,6 +868,7 @@ function FilmDetail() {
   if (!movie) {
     return (
       <div className="film-detail">
+
         <h2>
           Film ou série introuvable
         </h2>
@@ -768,6 +882,7 @@ function FilmDetail() {
         >
           ← Retour à l'accueil
         </button>
+
       </div>
     );
   }
@@ -780,32 +895,38 @@ function FilmDetail() {
 }
 
 // ============================================================
-// CONTENU DE L'APPLICATION (À L'INTÉRIEUR DU ROUTER)
+// CONTENU DE L'APPLICATION
 // ============================================================
 
 function AppRoutes({ user }) {
   const location = useLocation();
 
-  // ----------------------------------------------------------
-  // FOND PLEIN ÉCRAN (derrière sidebar + navbar) SELON LA ROUTE
-  // ----------------------------------------------------------
+  // ==========================================================
+  // FOND PLEIN ÉCRAN SELON LA ROUTE
+  // ==========================================================
 
   useEffect(() => {
-    const bg = FULL_BG_ROUTES[location.pathname];
+
+    const bg =
+      FULL_BG_ROUTES[
+        location.pathname
+      ];
 
     if (bg) {
-      document.body.style.background = bg;
+      document.body.style.background =
+        bg;
     } else {
       document.body.style.background = "";
     }
+
   }, [location.pathname]);
 
   return (
     <div className="app">
 
-      {/* ================================================
+      {/* ====================================================
           SIDEBAR
-      ================================================= */}
+      ==================================================== */}
 
       <Sidebar
         user={user}
@@ -813,25 +934,25 @@ function AppRoutes({ user }) {
 
       <div className="app-content">
 
-        {/* ==============================================
+        {/* ==================================================
             BARRE DU HAUT
-        =============================================== */}
+        ================================================== */}
 
         <TopNavbar
           user={user}
         />
 
-        {/* ==============================================
+        {/* ==================================================
             CONTENU
-        =============================================== */}
+        ================================================== */}
 
         <main className="page-content">
 
           <Routes>
 
-            {/* ==========================================
+            {/* ==================================================
                 ACCUEIL
-            =========================================== */}
+            ================================================== */}
 
             <Route
               path="/"
@@ -840,9 +961,20 @@ function AppRoutes({ user }) {
               }
             />
 
-            {/* ==========================================
+            {/* ==================================================
+                TOUT
+            ================================================== */}
+
+            <Route
+              path="/tout"
+              element={
+                <Tout />
+              }
+            />
+
+            {/* ==================================================
                 FILMS
-            =========================================== */}
+            ================================================== */}
 
             <Route
               path="/films"
@@ -851,9 +983,9 @@ function AppRoutes({ user }) {
               }
             />
 
-            {/* ==========================================
+            {/* ==================================================
                 SÉRIES
-            =========================================== */}
+            ================================================== */}
 
             <Route
               path="/series"
@@ -862,9 +994,9 @@ function AppRoutes({ user }) {
               }
             />
 
-            {/* ==========================================
+            {/* ==================================================
                 FAVORIS
-            =========================================== */}
+            ================================================== */}
 
             <Route
               path="/favoris"
@@ -873,9 +1005,9 @@ function AppRoutes({ user }) {
               }
             />
 
-            {/* ==========================================
+            {/* ==================================================
                 NOTES
-            =========================================== */}
+            ================================================== */}
 
             <Route
               path="/note"
@@ -884,9 +1016,9 @@ function AppRoutes({ user }) {
               }
             />
 
-            {/* ==========================================
+            {/* ==================================================
                 CONNEXION
-            =========================================== */}
+            ================================================== */}
 
             <Route
               path="/se-connecter"
@@ -895,9 +1027,9 @@ function AppRoutes({ user }) {
               }
             />
 
-            {/* ==========================================
+            {/* ==================================================
                 ADMIN
-            =========================================== */}
+            ================================================== */}
 
             <Route
               path="/admin"
@@ -910,9 +1042,9 @@ function AppRoutes({ user }) {
               }
             />
 
-            {/* ==========================================
+            {/* ==================================================
                 DÉTAIL FILM / SÉRIE
-            =========================================== */}
+            ================================================== */}
 
             <Route
               path="/film/:id"
@@ -921,9 +1053,9 @@ function AppRoutes({ user }) {
               }
             />
 
-            {/* ==========================================
+            {/* ==================================================
                 PAGE INEXISTANTE
-            =========================================== */}
+            ================================================== */}
 
             <Route
               path="*"
@@ -938,7 +1070,9 @@ function AppRoutes({ user }) {
           </Routes>
 
         </main>
+
       </div>
+
     </div>
   );
 }
@@ -952,6 +1086,7 @@ function App() {
     useState(getCurrentUser);
 
   useEffect(() => {
+
     function updateUser() {
       setUser(
         getCurrentUser()
@@ -969,6 +1104,7 @@ function App() {
     );
 
     return () => {
+
       window.removeEventListener(
         "storage",
         updateUser
@@ -978,14 +1114,18 @@ function App() {
         "userChanged",
         updateUser
       );
+
     };
+
   }, []);
 
   return (
     <BrowserRouter
       basename={BASE_URL}
     >
-      <AppRoutes user={user} />
+      <AppRoutes
+        user={user}
+      />
     </BrowserRouter>
   );
 }
