@@ -10,7 +10,7 @@ const API_URL = "http://localhost:5000";
 function getSavedUser() {
   const savedUser = localStorage.getItem("user");
 
-  if (savedUser === null) {
+  if (!savedUser) {
     return null;
   }
 
@@ -35,7 +35,6 @@ function getImagePath(path) {
     return "";
   }
 
-  // URL complète
   if (
     path.startsWith("http://") ||
     path.startsWith("https://")
@@ -48,11 +47,17 @@ function getImagePath(path) {
     return `${API_URL}${path}`;
   }
 
-  // Image du projet React
+  // Image déjà avec le chemin GitHub Pages
   if (path.startsWith("/projet-films/")) {
     return path;
   }
 
+  // Image du dossier public/images
+  if (path.startsWith("/images/")) {
+    return `/projet-films${path}`;
+  }
+
+  // Autre chemin commençant par /
   if (path.startsWith("/")) {
     return `/projet-films${path}`;
   }
@@ -69,7 +74,6 @@ const emptyMovie = {
   type: "Film",
   genre: "",
   synopsis: "",
-  release_date: "",
   poster: "",
   banner: "",
   image1: "",
@@ -77,13 +81,14 @@ const emptyMovie = {
   image3: "",
   trailer: "",
   background: "",
+
+  // COULEURS DU CAROUSEL
   carousel_color_1: "#111111",
   carousel_color_2: "#333333",
 };
 
 // ============================================================
-// COMPOSANT IMAGE
-// IMPORTANT : IL EST EN DEHORS DE Admin()
+// COMPOSANT UPLOAD IMAGE
 // ============================================================
 
 function ImageUploadField({
@@ -98,9 +103,7 @@ function ImageUploadField({
 
   return (
     <div className="form-group">
-      <label>
-        {label}
-      </label>
+      <label>{label}</label>
 
       <input
         type="file"
@@ -108,14 +111,10 @@ function ImageUploadField({
         onChange={(event) =>
           handleImageUpload(event, fieldName)
         }
-        disabled={
-          uploadingImage === fieldName
-        }
+        disabled={uploadingImage === fieldName}
       />
 
-      <small>
-        {description}
-      </small>
+      <small>{description}</small>
 
       {uploadingImage === fieldName && (
         <p className="admin-message">
@@ -129,9 +128,7 @@ function ImageUploadField({
             marginTop: "15px",
           }}
         >
-          <p>
-            ✅ Image sélectionnée
-          </p>
+          <p>✅ Image sélectionnée</p>
 
           <img
             src={getImagePath(imageValue)}
@@ -228,6 +225,7 @@ function Admin() {
       const token = getToken();
 
       if (!token) {
+        setMessage("Vous devez être connecté.");
         return;
       }
 
@@ -250,6 +248,11 @@ function Admin() {
           data.message
         );
 
+        setMessage(
+          data.message ||
+            "Impossible de charger les utilisateurs."
+        );
+
         return;
       }
 
@@ -258,6 +261,10 @@ function Admin() {
       console.error(
         "Erreur chargement utilisateurs :",
         error
+      );
+
+      setMessage(
+        "Impossible de charger les utilisateurs."
       );
     } finally {
       setLoadingUsers(false);
@@ -347,6 +354,7 @@ function Admin() {
       const token = getToken();
 
       if (!token) {
+        setMessage("Vous devez être connecté.");
         return;
       }
 
@@ -372,6 +380,12 @@ function Admin() {
         );
 
         setMovies([]);
+
+        setMessage(
+          data.message ||
+            "Impossible de charger les films."
+        );
+
         return;
       }
 
@@ -383,6 +397,10 @@ function Admin() {
       );
 
       setMovies([]);
+
+      setMessage(
+        "Impossible de charger les films et séries."
+      );
     } finally {
       setLoadingMovies(false);
     }
@@ -463,10 +481,7 @@ function Admin() {
 
       const data = await response.json();
 
-      console.log(
-        "Réponse upload :",
-        data
-      );
+      console.log("Réponse upload :", data);
 
       if (!response.ok) {
         setMessage(
@@ -485,7 +500,6 @@ function Admin() {
         return;
       }
 
-      // Enregistrer l'URL dans le formulaire
       setMovieForm((ancienFormulaire) => ({
         ...ancienFormulaire,
         [fieldName]: data.url,
@@ -542,23 +556,25 @@ function Admin() {
       genre: movie.genre || "",
       synopsis: movie.synopsis || "",
 
-      release_date: movie.release_date
-        ? String(movie.release_date).slice(0, 10)
-        : "",
-
       poster: movie.poster || "",
       banner: movie.banner || "",
+
       image1: movie.image1 || "",
       image2: movie.image2 || "",
       image3: movie.image3 || "",
+
       trailer: movie.trailer || "",
       background: movie.background || "",
 
+      // IMPORTANT
+      // On récupère les couleurs existantes
       carousel_color_1:
-        movie.carousel_color_1 || "#111111",
+        movie.carousel_color_1 ||
+        "#111111",
 
       carousel_color_2:
-        movie.carousel_color_2 || "#333333",
+        movie.carousel_color_2 ||
+        "#333333",
     });
 
     setMessage("");
@@ -614,18 +630,13 @@ function Admin() {
 
     setMessage("");
 
+    // Vérification titre
     if (!movieForm.title.trim()) {
       setMessage("Le titre est obligatoire.");
       return;
     }
 
-    if (!movieForm.release_date) {
-      setMessage(
-        "La date de sortie est obligatoire."
-      );
-      return;
-    }
-
+    // Vérification synopsis
     if (!movieForm.synopsis.trim()) {
       setMessage(
         "Le synopsis est obligatoire."
@@ -646,29 +657,67 @@ function Admin() {
     const movieId =
       editingMovieId;
 
+    // ========================================================
+    // DONNÉES ENVOYÉES AU BACKEND
+    // ========================================================
+
     const movieData = {
       title: movieForm.title.trim(),
+
       type: movieForm.type,
+
       genre: movieForm.genre.trim(),
+
       synopsis: movieForm.synopsis.trim(),
-      release_date: movieForm.release_date,
 
       poster: movieForm.poster.trim(),
+
       banner: movieForm.banner.trim(),
 
       image1: movieForm.image1.trim(),
+
       image2: movieForm.image2.trim(),
+
       image3: movieForm.image3.trim(),
 
       trailer: movieForm.trailer.trim(),
+
       background: movieForm.background.trim(),
 
+      // ======================================================
+      // COULEURS DU CAROUSEL
+      // ======================================================
+
       carousel_color_1:
-        movieForm.carousel_color_1,
+        movieForm.carousel_color_1 || "#111111",
 
       carousel_color_2:
-        movieForm.carousel_color_2,
+        movieForm.carousel_color_2 || "#333333",
     };
+
+    console.log(
+      "===================================="
+    );
+
+    console.log(
+      "DONNÉES FILM ENVOYÉES AU SERVEUR :"
+    );
+
+    console.log(movieData);
+
+    console.log(
+      "COULEUR 1 :",
+      movieData.carousel_color_1
+    );
+
+    console.log(
+      "COULEUR 2 :",
+      movieData.carousel_color_2
+    );
+
+    console.log(
+      "===================================="
+    );
 
     const url = isEditing
       ? `${API_URL}/api/admin/movies/${movieId}`
@@ -681,11 +730,6 @@ function Admin() {
     setLoading(true);
 
     try {
-      console.log(
-        "Données envoyées :",
-        movieData
-      );
-
       const response = await fetch(url, {
         method,
         headers: {
@@ -767,7 +811,7 @@ function Admin() {
       }
 
       // ======================================================
-      // ACTUALISER LES AUTRES PAGES
+      // PRÉVENIR LES AUTRES PAGES
       // ======================================================
 
       window.dispatchEvent(
@@ -775,7 +819,7 @@ function Admin() {
       );
 
       // ======================================================
-      // FERMER FORMULAIRE
+      // FERMER LE FORMULAIRE
       // ======================================================
 
       setMovieForm({
@@ -783,7 +827,14 @@ function Admin() {
       });
 
       setEditingMovieId(null);
+
       setShowMovieForm(false);
+
+      // ======================================================
+      // RECHARGER LES DONNÉES DEPUIS LE SERVEUR
+      // ======================================================
+
+      await loadMovies();
 
     } catch (error) {
       console.error(
@@ -883,7 +934,6 @@ function Admin() {
           ...emptyMovie,
         });
       }
-
     } catch (error) {
       console.error(
         "Erreur suppression contenu :",
@@ -1158,27 +1208,6 @@ function Admin() {
                 </div>
 
                 {/* ==================================================
-                    DATE
-                ================================================== */}
-
-                <div className="form-group">
-
-                  <label htmlFor="movie-date">
-                    Date de sortie *
-                  </label>
-
-                  <input
-                    id="movie-date"
-                    name="release_date"
-                    type="date"
-                    value={movieForm.release_date}
-                    onChange={handleMovieChange}
-                    required
-                  />
-
-                </div>
-
-                {/* ==================================================
                     SYNOPSIS
                 ================================================== */}
 
@@ -1245,6 +1274,8 @@ function Admin() {
 
                 <div className="form-row">
 
+                  {/* COULEUR 1 */}
+
                   <div className="form-group">
 
                     <label htmlFor="movie-color-1">
@@ -1270,6 +1301,8 @@ function Admin() {
                     </div>
 
                   </div>
+
+                  {/* COULEUR 2 */}
 
                   <div className="form-group">
 
@@ -1319,12 +1352,10 @@ function Admin() {
                       )`,
                     }}
                   >
-
                     <strong>
                       {movieForm.title ||
                         "Votre film"}
                     </strong>
-
                   </div>
 
                 </div>
@@ -1382,13 +1413,13 @@ function Admin() {
                     id="movie-trailer"
                     name="trailer"
                     type="url"
-                    placeholder="https://www.youtube.com/watch?v=..."
+                    placeholder="https://www.youtube.com/embed/..."
                     value={movieForm.trailer}
                     onChange={handleMovieChange}
                   />
 
                   <small>
-                    Collez le lien du trailer YouTube.
+                    Collez le lien embed du trailer YouTube.
                   </small>
 
                 </div>
@@ -1512,43 +1543,23 @@ function Admin() {
                       </h3>
 
                       <span className="movie-type-badge">
-
                         {movie.type === "Série" ||
                         movie.type === "Serie"
                           ? "📺 Série"
                           : "🎬 Film"}
-
                       </span>
 
                     </div>
 
-                    <p className="movie-admin-date">
-
-                      📅{" "}
-
-                      {movie.release_date
-                        ? new Date(
-                            movie.release_date
-                          ).toLocaleDateString(
-                            "fr-FR"
-                          )
-                        : "Date inconnue"}
-
-                    </p>
-
                     {movie.genre && (
-
                       <p className="movie-admin-genre">
                         🎭 {movie.genre}
                       </p>
-
                     )}
 
                     <p className="movie-admin-synopsis">
-
                       {movie.synopsis ||
                         "Aucun synopsis."}
-
                     </p>
 
                     <div className="movie-admin-extra">
@@ -1594,6 +1605,15 @@ function Admin() {
                           🎨 Background
                         </span>
                       )}
+
+                      {/* COULEURS */}
+
+                      {movie.carousel_color_1 &&
+                        movie.carousel_color_2 && (
+                          <span>
+                            🎨 Couleurs carousel
+                          </span>
+                        )}
 
                     </div>
 
@@ -1711,11 +1731,9 @@ function Admin() {
 
                         {utilisateur.role ===
                           "admin" && (
-
                           <span className="admin-badge">
                             👑 Admin
                           </span>
-
                         )}
 
                       </div>
@@ -1725,21 +1743,16 @@ function Admin() {
                       </span>
 
                       {utilisateur.email && (
-
                         <span>
-                          📧{" "}
-                          {utilisateur.email}
+                          📧 {utilisateur.email}
                         </span>
-
                       )}
 
                       {utilisateur.role && (
-
                         <span>
                           Rôle :{" "}
                           {utilisateur.role}
                         </span>
-
                       )}
 
                     </div>
